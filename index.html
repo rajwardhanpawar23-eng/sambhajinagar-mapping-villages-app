@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chhatrapati Sambhajinagar - Taluka Delivery Analysis (F23-F26)</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:#f4f6f8; color:#1e293b; }
+  header { background: linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#0891b2 100%); color:#fff; padding:20px 28px; box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  header h1 { margin:0; font-size:22px; font-weight:700; letter-spacing:-0.2px; }
+  header .subtitle { font-size:13px; opacity:0.9; margin-top:4px; }
+  .kpi-strip { display:flex; gap:12px; padding:16px 28px; background:#fff; border-bottom:1px solid #e2e8f0; overflow-x:auto; }
+  .kpi { flex:1; min-width:150px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; }
+  .kpi .label { font-size:11px; text-transform:uppercase; color:#64748b; font-weight:600; letter-spacing:0.5px; }
+  .kpi .value { font-size:22px; font-weight:700; color:#0f172a; margin-top:2px; }
+  .kpi .change { font-size:11px; color:#16a34a; margin-top:2px; }
+  nav.tabs { display:flex; gap:0; padding:0 28px; background:#fff; border-bottom:1px solid #e2e8f0; overflow-x:auto; white-space:nowrap; }
+  nav.tabs button { border:none; background:none; padding:14px 18px; font-size:13px; color:#475569; cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; font-weight:500; }
+  nav.tabs button:hover { color:#0891b2; background:#f0f9ff; }
+  nav.tabs button.active { color:#0891b2; border-bottom-color:#0891b2; font-weight:600; }
+  main { padding:20px 28px; }
+  .view { display:none; }
+  .view.active { display:block; }
+  .row { display:grid; grid-template-columns: 1fr 380px; gap:20px; }
+  @media (max-width:900px) { .row { grid-template-columns: 1fr; } }
+  .card { background:#fff; border-radius:10px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.05); border:1px solid #e2e8f0; }
+  .card h2 { margin:0 0 12px; font-size:15px; color:#0f172a; font-weight:600; }
+  .card h3 { margin:14px 0 8px; font-size:13px; color:#334155; font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid #f1f5f9; }
+  th { background:#f8fafc; font-size:11px; text-transform:uppercase; color:#64748b; font-weight:600; letter-spacing:0.5px; }
+  tr:hover { background:#f8fafc; }
+  .bar-cell { background:linear-gradient(90deg,#0891b2 var(--pct),transparent var(--pct)); color:#fff; padding:4px 8px; border-radius:4px; display:inline-block; min-width:40px; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; }
+  .pill.up { background:#dcfce7; color:#166534; }
+  .pill.down { background:#fee2e2; color:#991b1b; }
+  .pill.neutral { background:#f1f5f9; color:#475569; }
+  .filter-bar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+  .filter-bar label { font-size:12px; color:#475569; font-weight:500; }
+  .filter-bar select { padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; background:#fff; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; font-size:11px; }
+  .legend-item { display:flex; align-items:center; gap:6px; padding:3px 8px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0; cursor:pointer; }
+  .legend-item.active { background:#0891b2; color:#fff; border-color:#0891b2; }
+  .legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .taluka-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .taluka-card { background:#fff; border-radius:10px; padding:16px; border:1px solid #e2e8f0; cursor:pointer; transition:all .15s; }
+  .taluka-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); transform:translateY(-2px); border-color:#0891b2; }
+  .taluka-card .name { font-size:17px; font-weight:700; color:#0f172a; }
+  .taluka-card .stat-row { display:flex; justify-content:space-between; margin-top:8px; font-size:12px; color:#475569; }
+  .taluka-card .stat-row span:last-child { font-weight:600; color:#0f172a; }
+  .taluka-card .bars { display:flex; gap:3px; margin-top:12px; align-items:flex-end; height:50px; }
+  .taluka-card .bars .bar { flex:1; background:#0891b2; border-radius:3px 3px 0 0; min-height:3px; position:relative; }
+  .taluka-card .bars .bar::after { content:attr(data-label); position:absolute; bottom:-14px; left:0; right:0; text-align:center; font-size:9px; color:#64748b; }
+  .metric-card { text-align:center; padding:14px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; }
+  .metric-card .num { font-size:24px; font-weight:700; color:#0891b2; }
+  .metric-card .lbl { font-size:11px; color:#64748b; margin-top:2px; text-transform:uppercase; letter-spacing:0.5px; }
+  .metric-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
+  .footer { padding:16px 28px; text-align:center; color:#94a3b8; font-size:11px; border-top:1px solid #e2e8f0; margin-top:20px; background:#fff; }
+  /* Map styling */
+  .map-wrap { position:relative; background:linear-gradient(180deg,#f0f9ff 0%,#e0f2fe 100%); border-radius:8px; overflow:hidden; border:1px solid #cbd5e1; }
+  svg.map-svg { display:block; width:100%; height:auto; cursor:grab; }
+  svg.map-svg:active { cursor:grabbing; }
+  .village-dot { transition:opacity .15s, r .15s, stroke-width .15s; cursor:pointer; }
+  .village-dot:hover { stroke:#0f172a; stroke-width:2.5; }
+  .village-dot.dim { opacity:0.15; }
+  .taluka-label-bg { fill:#1e3a8a; }
+  .taluka-label-text { fill:#fff; font-weight:700; font-size:14px; }
+  .village-label { fill:#0f172a; font-size:10px; font-weight:600; pointer-events:none; }
+  .village-label-bg { fill:#fff; fill-opacity:0.92; stroke:#94a3b8; stroke-width:0.5; }
+  /* Popup */
+  .popup { position:absolute; background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; box-shadow:0 4px 12px rgba(0,0,0,.15); font-size:12px; min-width:220px; z-index:20; pointer-events:none; }
+  .popup h4 { margin:0 0 6px; font-size:13px; color:#0f172a; font-weight:700; }
+  .popup .small { font-size:10px; color:#64748b; font-weight:400; }
+  .popup .kv { display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px dashed #e2e8f0; }
+  .popup .kv:last-child { border:none; }
+  .popup .kv span:last-child { font-weight:600; }
+  .map-controls { position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:4px; z-index:10; }
+  .map-controls button { width:32px; height:32px; background:#fff; border:1px solid #cbd5e1; border-radius:4px; cursor:pointer; font-size:16px; font-weight:700; color:#0f172a; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .map-controls button:hover { background:#f0f9ff; }
+  /* Bar chart */
+  .svg-chart { width:100%; height:320px; }
+  .svg-chart-bar { fill:#0891b2; transition:fill .15s; }
+  .svg-chart-bar:hover { fill:#0e7490; }
+  .svg-chart-axis { stroke:#cbd5e1; stroke-width:1; }
+  .svg-chart-grid { stroke:#e2e8f0; stroke-width:1; stroke-dasharray:2,3; }
+  .svg-chart-label { fill:#475569; font-size:10px; }
+  .svg-chart-value { fill:#0f172a; font-size:10px; font-weight:700; }
+  /* Line chart */
+  .svg-line { stroke-width:2.5; fill:none; }
+  .svg-line-pt { stroke-width:2; stroke:#fff; }
+  .notice { background:#fef3c7; color:#92400e; padding:10px 14px; border-radius:6px; font-size:12px; margin-bottom:12px; border-left:3px solid #f59e0b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Chhatrapati Sambhajinagar - Taluka Delivery Analysis</h1>
+  <div class="subtitle">Village-level delivery intelligence &middot; F23 - F26 &middot; 6 Talukas &middot; 22 Salesmen &middot; 950 Villages</div>
+</header>
+
+<div class="kpi-strip" id="kpi-strip"></div>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-view="overview">Overview</button>
+  <button data-view="talukas">All Taluka Maps</button>
+  <button data-view="aurangabad">Aurangabad</button>
+  <button data-view="gangapur">Gangapur</button>
+  <button data-view="kannad">Kannad</button>
+  <button data-view="khuldabad">Khuldabad</button>
+  <button data-view="paithan">Paithan</button>
+  <button data-view="phulambri">Phulambri</button>
+  <button data-view="salesmen">Salesmen</button>
+  <button data-view="analysis">Analysis</button>
+</nav>
+
+<main>
+
+<div class="view active" id="v-overview">
+  <div class="row">
+    <div class="card">
+      <h2>District Overview - All 6 Talukas</h2>
+      <div class="map-wrap" id="map-overview-wrap">
+        <svg class="map-svg" id="map-overview" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="map-controls">
+          <button onclick="zoomMap('overview', 1.4)" title="Zoom in">+</button>
+          <button onclick="zoomMap('overview', 1/1.4)" title="Zoom out">&minus;</button>
+          <button onclick="resetMap('overview')" title="Reset" style="font-size:11px">&#8634;</button>
+        </div>
+      </div>
+      <div class="legend" id="legend-overview"></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Taluka Ranking</h2>
+        <table id="tab-taluka-rank"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="v-talukas">
+  <div class="card" style="margin-bottom:14px;">
+    <h2>Click any taluka card to open its dedicated map</h2>
+    <div class="taluka-grid" id="taluka-grid"></div>
+  </div>
+</div>
+
+<template id="tpl-taluka-view">
+  <div class="row">
+    <div class="card">
+      <h2 class="taluka-title"></h2>
+      <div class="filter-bar">
+        <label>Salesman:</label>
+        <select class="f-salesman"><option value="">All</option></select>
+        <label>Year:</label>
+        <select class="f-year">
+          <option value="tot">All years (F23-F26)</option>
+          <option value="F23">F23</option>
+          <option value="F24">F24</option>
+          <option value="F25">F25</option>
+          <option value="F26">F26</option>
+        </select>
+        <label>Show:</label>
+        <select class="f-show">
+          <option value="all">All villages</option>
+          <option value="active">Delivered villages only</option>
+          <option value="zero">Zero-F26 only (opportunity)</option>
+        </select>
+      </div>
+      <div class="map-wrap">
+        <svg class="map-svg taluka-map-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="map-controls">
+          <button class="zoom-in">+</button>
+          <button class="zoom-out">&minus;</button>
+          <button class="zoom-reset" style="font-size:11px">&#8634;</button>
+        </div>
+      </div>
+      <div class="legend sm-legend"></div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>KPIs</h2>
+        <div class="metric-grid k-metrics"></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h2>Salesman Performance (this taluka)</h2>
+        <table class="t-salesman"></table>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h2>Top 5 Villages</h2>
+        <table class="t-top5"></table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<div class="view" id="v-salesmen">
+  <div class="card">
+    <h2>Salesmen Performance Ranking</h2>
+    <table id="tab-salesmen"></table>
+  </div>
+</div>
+
+<div class="view" id="v-analysis">
+  <div class="row">
+    <div>
+      <div class="card">
+        <h2>Year-over-Year Delivery Trend</h2>
+        <svg class="svg-chart" id="chart-yoy" viewBox="0 0 800 320" preserveAspectRatio="none"></svg>
+        <div class="legend" id="yoy-legend"></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h2>Top 10 Villages (District-wide)</h2>
+        <table id="tab-top10"></table>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Tractor Penetration by Taluka</h2>
+        <table id="tab-penetration"></table>
+        <div style="font-size:11px;color:#64748b;margin-top:8px">Penetration = Total F23-F26 delivery / Tractor population x 100%</div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h2>Delivery per 1,000 Population</h2>
+        <table id="tab-per1000"></table>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h2>Zero-F26 Villages - Opportunity List</h2>
+        <table id="tab-zerof26"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div class="footer">
+  Built for Rajwardhan Pawar &middot; F23-F26 data &middot; F23 only recorded for Aurangabad and Gangapur talukas &middot; Village positions approximate within taluka.
+</div>
+
+<script>
+var PAYLOAD = {"villages":[{"v":"Aurngabad","t":"Aurangabad","s":"Purshottam","p":0,"tp":500.0,"lat":19.809845849922652,"lon":75.36375277804069,"y":[19.0,13.0,19.0,20.0],"tot":71.0},{"v":"Abdimandi","t":"Aurangabad","s":"Sharad","p":3015.0,"tp":30.0,"lat":19.750494909438256,"lon":75.35145033460823,"y":[0,1.0,0,0],"tot":1.0},{"v":"Adgaon Bk","t":"Aurangabad","s":"Bhartat","p":3184.0,"tp":100.0,"lat":19.860460459008998,"lon":75.51193923841355,"y":[1.0,1.0,1.0,3.0],"tot":6.0},{"v":"Adgaon Kh","t":"Aurangabad","s":"Bhartat","p":2473.0,"tp":150.0,"lat":19.89710340586866,"lon":75.31387575918671,"y":[2.0,1.0,1.0,0],"tot":4.0},{"v":"Adgaon Maholi","t":"Aurangabad","s":"Vitthal","p":2217.0,"tp":30.0,"lat":19.898052043829704,"lon":75.2518808712633,"y":[1.0,0,0,0],"tot":1.0},{"v":"Adgaon Sarak","t":"Aurangabad","s":"Vitthal","p":2656.0,"tp":15.0,"lat":19.90495338181142,"lon":75.4353121088933,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Anjandoh","t":"Aurangabad","s":"Vitthal","p":1550.0,"tp":10.0,"lat":19.951409872816704,"lon":75.327213602328,"y":[0,0,0,0],"tot":0.0},{"v":"Apatgaon","t":"Aurangabad","s":"Bhartat","p":1879.0,"tp":80.0,"lat":19.979408755472956,"lon":75.21122035814649,"y":[0,0,0,1.0],"tot":1.0},{"v":"Ashrafpur","t":"Aurangabad","s":"Sharad","p":215.0,"tp":0.0,"lat":19.958264421950794,"lon":75.45972219676405,"y":[0,0,0,0],"tot":0.0},{"v":"Aurangpur","t":"Aurangabad","s":"Vitthal","p":882.0,"tp":12.0,"lat":19.869952542153545,"lon":75.31196069296098,"y":[0,0,0,0],"tot":0.0},{"v":"Bagtalab","t":"Aurangabad","s":"Sharad","p":179.0,"tp":0.0,"lat":19.870786509413335,"lon":75.20890012073794,"y":[0,0,0,0],"tot":0.0},{"v":"Bakapur","t":"Aurangabad","s":"Vitthal","p":1655.0,"tp":20.0,"lat":19.809296143743104,"lon":75.31290807096873,"y":[0,0,0,0],"tot":0.0},{"v":"Balapur","t":"Aurangabad","s":"Bhartat","p":1094.0,"tp":50.0,"lat":19.986629658239217,"lon":75.30089289276725,"y":[1.0,1.0,4.0,0],"tot":6.0},{"v":"Bangaon","t":"Aurangabad","s":"Vitthal","p":1246.0,"tp":50.0,"lat":19.78883679362369,"lon":75.2753593836453,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Bebalyachiwadi","t":"Aurangabad","s":"Bhartat","p":1002.0,"tp":15.0,"lat":19.866772082577352,"lon":75.36154163905665,"y":[1.0,0,1.0,0],"tot":2.0},{"v":"Bendewadi","t":"Aurangabad","s":"Vitthal","p":786.0,"tp":12.0,"lat":19.997384808049645,"lon":75.29791612646855,"y":[1.0,0,0,0],"tot":1.0},{"v":"Bhabarda","t":"Aurangabad","s":"Vitthal","p":1004.0,"tp":20.0,"lat":19.91005930926748,"lon":75.4988772503819,"y":[0,0,0,0],"tot":0.0},{"v":"Bhalgaon","t":"Aurangabad","s":"Bhartat","p":2262.0,"tp":60.0,"lat":19.77249779401248,"lon":75.41672648389691,"y":[0,0,1.0,0],"tot":1.0},{"v":"Bhikapur","t":"Aurangabad","s":"Vitthal","p":1722.0,"tp":12.0,"lat":19.750149719697536,"lon":75.45049814911873,"y":[0,0,0,0],"tot":0.0},{"v":"Bhindon","t":"Aurangabad","s":"Bhartat","p":1037.0,"tp":25.0,"lat":19.80836317023473,"lon":75.24238338086033,"y":[1.0,0,0,0],"tot":1.0},{"v":"Bhogalwadi","t":"Aurangabad","s":"Vitthal","p":610.0,"tp":15.0,"lat":19.913926943888246,"lon":75.47490913528623,"y":[0,0,0,0],"tot":0.0},{"v":"Borwadi","t":"Aurangabad","s":"Vitthal","p":424.0,"tp":15.0,"lat":19.909167599634642,"lon":75.23883558274818,"y":[0,0,0,0],"tot":0.0},{"v":"Borwadi Tanda","t":"Aurangabad","s":"Vitthal","p":379.0,"tp":10.0,"lat":19.79128553161911,"lon":75.26604231057084,"y":[0,0,0,0],"tot":0.0},{"v":"Chartha","t":"Aurangabad","s":"Vitthal","p":1055.0,"tp":30.0,"lat":20.00594661827463,"lon":75.27491832862998,"y":[0,0,1.0,0],"tot":1.0},{"v":"Chauka","t":"Aurangabad","s":"Sharad","p":4732.0,"tp":70.0,"lat":19.897457209568117,"lon":75.36814749116671,"y":[1.0,3.0,2.0,4.0],"tot":10.0},{"v":"Chaukawadi","t":"Aurangabad","s":"Sharad","p":549.0,"tp":20.0,"lat":19.732496222258423,"lon":75.40475100306307,"y":[0,1.0,2.0,0],"tot":3.0},{"v":"Chincholi","t":"Aurangabad","s":"Bhartat","p":709.0,"tp":20.0,"lat":19.861228276824804,"lon":75.41365725305354,"y":[1.0,0,0,2.0],"tot":3.0},{"v":"Chite Pimpalgaon","t":"Aurangabad","s":"Bhartat","p":1461.0,"tp":100.0,"lat":20.001222042074893,"lon":75.36547713823384,"y":[1.0,0,0,1.0],"tot":2.0},{"v":"Chitegaon","t":"Aurangabad","s":"Bhartat","p":1892.0,"tp":50.0,"lat":19.934442578822242,"lon":75.30920412114978,"y":[0,1.0,2.0,2.0],"tot":5.0},{"v":"Daigavhan","t":"Aurangabad","s":"Bhartat","p":1298.0,"tp":50.0,"lat":19.951744857366506,"lon":75.30334205908201,"y":[1.0,0,2.0,0],"tot":3.0},{"v":"Darakwadi","t":"Aurangabad","s":"Bhartat","p":880.0,"tp":15.0,"lat":19.847151188245032,"lon":75.24532039168322,"y":[0,0,0,0],"tot":0.0},{"v":"Daregaon","t":"Aurangabad","s":"Vitthal","p":469.0,"tp":15.0,"lat":19.757088438720622,"lon":75.2739294337237,"y":[0,1.0,0,0],"tot":1.0},{"v":"Daulatabad","t":"Aurangabad","s":"Sharad","p":6096.0,"tp":75.0,"lat":19.896324196993806,"lon":75.39729976887413,"y":[0,3.0,0,0],"tot":3.0},{"v":"Demani","t":"Aurangabad","s":"Vitthal","p":915.0,"tp":20.0,"lat":19.936148476421824,"lon":75.44329572470222,"y":[1.0,0,0,0],"tot":1.0},{"v":"Devlai","t":"Aurangabad","s":"Purshottam","p":10604.0,"tp":150.0,"lat":20.01361587408469,"lon":75.25599504101844,"y":[1.0,2.0,5.0,2.0],"tot":10.0},{"v":"Dharmapur","t":"Aurangabad","s":"Sharad","p":343.0,"tp":12.0,"lat":19.95919450596121,"lon":75.32634863028368,"y":[0,0,0,1.0],"tot":1.0},{"v":"Dhawalapuri","t":"Aurangabad","s":"Vitthal","p":1827.0,"tp":50.0,"lat":20.018604092957695,"lon":75.36600554287318,"y":[0,0,0,0],"tot":0.0},{"v":"Dhondkheda","t":"Aurangabad","s":"Vitthal","p":575.0,"tp":10.0,"lat":19.76388992129595,"lon":75.25986598410607,"y":[0,0,0,0],"tot":0.0},{"v":"Dhopateshwar","t":"Aurangabad","s":"Sharad","p":653.0,"tp":10.0,"lat":19.908772259832126,"lon":75.49831292339776,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Donwada","t":"Aurangabad","s":"Sharad","p":1132.0,"tp":12.0,"lat":19.78251347156385,"lon":75.47814126144765,"y":[0,0,1.0,0],"tot":1.0},{"v":"Dudhad","t":"Aurangabad","s":"Vitthal","p":2661.0,"tp":70.0,"lat":19.96413874334146,"lon":75.34823518946567,"y":[0,0,0,1.0],"tot":1.0},{"v":"Eklahara","t":"Aurangabad","s":"Bhartat","p":286.0,"tp":15.0,"lat":19.879347773918397,"lon":75.35286824652314,"y":[0,0,0,0],"tot":0.0},{"v":"Ekod","t":"Aurangabad","s":"Bhartat","p":880.0,"tp":30.0,"lat":19.79706108387242,"lon":75.21610290877038,"y":[1.0,0,0,0],"tot":1.0},{"v":"Fattepur","t":"Aurangabad","s":"Vitthal","p":196.0,"tp":6.0,"lat":20.03314881488477,"lon":75.324061064033,"y":[0,0,0,0],"tot":0.0},{"v":"Gadhe Jalgaon","t":"Aurangabad","s":"Vitthal","p":3958.0,"tp":150.0,"lat":19.743703296655994,"lon":75.26170704693108,"y":[3.0,2.0,3.0,7.0],"tot":15.0},{"v":"Gadiwat","t":"Aurangabad","s":"Bhartat","p":1133.0,"tp":50.0,"lat":19.834604248518634,"lon":75.45412099980796,"y":[0,0,2.0,3.0],"tot":5.0},{"v":"Gadiwat Tanda","t":"Aurangabad","s":"Bhartat","p":629.0,"tp":5.0,"lat":19.776309215899264,"lon":75.20951016919423,"y":[1.0,0,0,0],"tot":1.0},{"v":"Gandheli","t":"Aurangabad","s":"Bhartat","p":2996.0,"tp":30.0,"lat":19.83195619721449,"lon":75.46775572962494,"y":[1.0,3.0,1.0,1.0],"tot":6.0},{"v":"Gangapur Jahagir","t":"Aurangabad","s":"Vitthal","p":700.0,"tp":25.0,"lat":19.777102883388366,"lon":75.2433304245675,"y":[0,0,0,0],"tot":0.0},{"v":"Gangapur Nehari","t":"Aurangabad","s":"Purshottam","p":982.0,"tp":5.0,"lat":19.82157448208615,"lon":75.27576986958368,"y":[0,0,0,0],"tot":0.0},{"v":"Garkheda","t":"Aurangabad","s":"Bhartat","p":1276.0,"tp":25.0,"lat":19.939595562903484,"lon":75.31963705405703,"y":[0,0,0,2.0],"tot":2.0},{"v":"Gavadari Tanda","t":"Aurangabad","s":"Sharad","p":518.0,"tp":12.0,"lat":19.763563765563966,"lon":75.46372811883069,"y":[0,2.0,1.0,0],"tot":3.0},{"v":"Georai","t":"Aurangabad","s":"Purshottam","p":3089.0,"tp":25.0,"lat":19.756258452317873,"lon":75.26206767400184,"y":[1.0,0,1.0,1.0],"tot":3.0},{"v":"Georai Kubri","t":"Aurangabad","s":"Vitthal","p":2077.0,"tp":20.0,"lat":19.790211212439598,"lon":75.48541750726291,"y":[0,3.0,2.0,0],"tot":5.0},{"v":"Georai Tanda","t":"Aurangabad","s":"Purshottam","p":1828.0,"tp":30.0,"lat":19.792285335204415,"lon":75.3206848181574,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Ghardon","t":"Aurangabad","s":"Bhartat","p":1582.0,"tp":50.0,"lat":19.762986612902736,"lon":75.31088130101791,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Ghardon Tanda","t":"Aurangabad","s":"Bhartat","p":1037.0,"tp":7.0,"lat":19.82312222350312,"lon":75.32877305608763,"y":[0,0,1.0,0.0],"tot":1.0},{"v":"Gharegaon Ektuni","t":"Aurangabad","s":"Bhartat","p":961.0,"tp":0,"lat":20.017569973951396,"lon":75.30028954025744,"y":[1.0,0,3.0,2.0],"tot":6.0},{"v":"Gharegaon Pimpri","t":"Aurangabad","s":"Bhartat","p":943.0,"tp":60.0,"lat":19.975695594204876,"lon":75.28489652590414,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Girnera","t":"Aurangabad","s":"Purshottam","p":559.0,"tp":40.0,"lat":19.77136361192529,"lon":75.32715387008432,"y":[0,0,0,0],"tot":0.0},{"v":"Girnera Tanda","t":"Aurangabad","s":"Purshottam","p":1636.0,"tp":20.0,"lat":19.93278607618875,"lon":75.46151611405537,"y":[0,0,0,0],"tot":0.0},{"v":"Golatgaon","t":"Aurangabad","s":"Bhartat","p":5764.0,"tp":150.0,"lat":19.944898094455112,"lon":75.39725325074961,"y":[0,2.0,0,7.0],"tot":9.0},{"v":"Golwadi","t":"Aurangabad","s":"Purshottam","p":1116.0,"tp":25.0,"lat":19.901846890781453,"lon":75.41134439698092,"y":[0,0,0,0],"tot":0.0},{"v":"Gopalpur","t":"Aurangabad","s":"Sharad","p":651.0,"tp":25.0,"lat":19.98875620537541,"lon":75.27215169288534,"y":[0,0,0,0],"tot":0.0},{"v":"harshul","t":"Aurangabad","s":"Sharad","p":0,"tp":250.0,"lat":19.991843421243868,"lon":75.33660064263627,"y":[0,0,3.0,2.0],"tot":5.0},{"v":"Hasanabadwadi","t":"Aurangabad","s":"Vitthal","p":575.0,"tp":15.0,"lat":19.780898547353445,"lon":75.23613795838692,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Hatmali","t":"Aurangabad","s":"Vitthal","p":1659.0,"tp":15.0,"lat":19.901128746660792,"lon":75.29509831602017,"y":[0,1.0,0,0],"tot":1.0},{"v":"Hirapur","t":"Aurangabad","s":"Vitthal","p":359.0,"tp":10.0,"lat":19.9750842123223,"lon":75.38293089505208,"y":[0,0,0,0],"tot":0.0},{"v":"Hivra","t":"Aurangabad","s":"Bhartat","p":606.0,"tp":5.0,"lat":19.765954972633125,"lon":75.3911338054139,"y":[0,0,0,0],"tot":0.0},{"v":"Husenpur","t":"Aurangabad","s":"Bhartat","p":830.0,"tp":7.0,"lat":19.834188527449626,"lon":75.36021646657663,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Ibrahimpur","t":"Aurangabad","s":"Vitthal","p":149.0,"tp":5.0,"lat":19.84465656264937,"lon":75.30628689181391,"y":[0,0,0,0],"tot":0.0},{"v":"Islampurwadi","t":"Aurangabad","s":"Bhartat","p":409.0,"tp":5.0,"lat":19.77100142001472,"lon":75.39357460469441,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Jadgaon","t":"Aurangabad","s":"Vitthal","p":2019.0,"tp":50.0,"lat":19.995224291544368,"lon":75.3394696183923,"y":[0,1.0,3.0,2.0],"tot":6.0},{"v":"Jaman jyoti","t":"Aurangabad","s":"Purshottam","p":0,"tp":0,"lat":19.90146773289867,"lon":75.284207118584,"y":[1.0,0,0,0],"tot":1.0},{"v":"Jaipur","t":"Aurangabad","s":"Vitthal","p":1337.0,"tp":25.0,"lat":19.71864061346731,"lon":75.33476410122678,"y":[1.0,1.0,2.0,1.0],"tot":5.0},{"v":"Jalgaon Feran","t":"Aurangabad","s":"Vitthal","p":2016.0,"tp":35.0,"lat":19.80496199845244,"lon":75.27184457896736,"y":[0,1.0,0,3.0],"tot":4.0},{"v":"Jatwada","t":"Aurangabad","s":"Sharad","p":2454.0,"tp":50.0,"lat":19.88799364867221,"lon":75.43962552648654,"y":[2.0,4.0,1.0,2.0],"tot":9.0},{"v":"Jawatpur","t":"Aurangabad","s":"Sharad","p":22.0,"tp":0.0,"lat":19.874399072869842,"lon":75.26631787002596,"y":[0,0,0,0],"tot":0.0},{"v":"Jodwadi","t":"Aurangabad","s":"Bhartat","p":1132.0,"tp":12.0,"lat":19.74488323953785,"lon":75.42559619572911,"y":[1.0,0,0,0],"tot":1.0},{"v":"Jogwada","t":"Aurangabad","s":"Sharad","p":705.0,"tp":12.0,"lat":19.929144489707358,"lon":75.35088587464591,"y":[1.0,0,0,0],"tot":1.0},{"v":"Kachanpur","t":"Aurangabad","s":"Vitthal","p":651.0,"tp":10.0,"lat":19.74961612926071,"lon":75.41205629244125,"y":[0,0,0,0],"tot":0.0},{"v":"Kachhighati","t":"Aurangabad","s":"Vitthal","p":749.0,"tp":7.0,"lat":19.94693582349908,"lon":75.45073940862777,"y":[0,0,0,0],"tot":0.0},{"v":"Kachner","t":"Aurangabad","s":"Bhartat","p":2015.0,"tp":60.0,"lat":19.720417912245424,"lon":75.35846122880967,"y":[2.0,0,0,3.0],"tot":5.0},{"v":"Kachner Tanda","t":"Aurangabad","s":"Bhartat","p":1959.0,"tp":10.0,"lat":19.884614090765574,"lon":75.22784451648596,"y":[0,0,0,0],"tot":0.0},{"v":"Kadrabad","t":"Aurangabad","s":"Bhartat","p":1428.0,"tp":15.0,"lat":20.012649508467668,"lon":75.34669497557982,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kankora","t":"Aurangabad","s":"Sharad","p":618.0,"tp":10.0,"lat":19.724498322043626,"lon":75.38128957898421,"y":[0,0,1.0,0],"tot":1.0},{"v":"Karajgaon","t":"Aurangabad","s":"Vitthal","p":1328.0,"tp":15.0,"lat":19.87972851742148,"lon":75.41399269880083,"y":[0,0,3.0,5.0],"tot":8.0},{"v":"Karhol","t":"Aurangabad","s":"Bhartat","p":1387.0,"tp":35.0,"lat":19.744678530063645,"lon":75.42134524534644,"y":[0,0,4.0,1.0],"tot":5.0},{"v":"Karmad","t":"Aurangabad","s":"Vitthal","p":5934.0,"tp":200.0,"lat":19.841477705578406,"lon":75.46980543213236,"y":[1.0,2.0,1.0,3.0],"tot":7.0},{"v":"Karodi","t":"Aurangabad","s":"Sharad","p":1230.0,"tp":25.0,"lat":19.86688025072181,"lon":75.4228405336327,"y":[0,1.0,2.0,0],"tot":3.0},{"v":"Kesapuri","t":"Aurangabad","s":"Sharad","p":361.0,"tp":15.0,"lat":19.947439304078753,"lon":75.25160981055467,"y":[0,1.0,0,0],"tot":1.0},{"v":"Kesapuri Tanda","t":"Aurangabad","s":"Sharad","p":682.0,"tp":15.0,"lat":19.961102058643622,"lon":75.2874107473514,"y":[0,0,0,0],"tot":0.0},{"v":"Khamkheda","t":"Aurangabad","s":"Sharad","p":672.0,"tp":10.0,"lat":19.769940936481174,"lon":75.26757389217188,"y":[0,1.0,0,0],"tot":1.0},{"v":"Khodegaon","t":"Aurangabad","s":"Bhartat","p":2456.0,"tp":20.0,"lat":19.84744695050919,"lon":75.35580785913245,"y":[1.0,0,0,6.0],"tot":7.0},{"v":"Kodgaon Ambad","t":"Aurangabad","s":"Bhartat","p":1043.0,"tp":35.0,"lat":19.889198462673576,"lon":75.40168293888712,"y":[0,1.0,0,0],"tot":1.0},{"v":"Kodgaon Jalna","t":"Aurangabad","s":"Bhartat","p":968.0,"tp":35.0,"lat":19.95202301013522,"lon":75.40214460807658,"y":[0,0,0,0],"tot":0.0},{"v":"Kolghar","t":"Aurangabad","s":"Bhartat","p":1258.0,"tp":30.0,"lat":19.806935995196937,"lon":75.23996339712234,"y":[0,0,0,0],"tot":0.0},{"v":"Kolthan","t":"Aurangabad","s":"Sharad","p":725.0,"tp":12.0,"lat":19.831062105784092,"lon":75.26751685881662,"y":[0,0,0,0],"tot":0.0},{"v":"Konewadi","t":"Aurangabad","s":"Vitthal","p":1110.0,"tp":15.0,"lat":19.898592842916045,"lon":75.17299350450173,"y":[0,0,1.0,0],"tot":1.0},{"v":"Krishnapurwadi","t":"Aurangabad","s":"Vitthal","p":1332.0,"tp":15.0,"lat":19.822916719353614,"lon":75.41682996563658,"y":[0,0,0,0],"tot":0.0},{"v":"Kubhephal","t":"Aurangabad","s":"Vitthal","p":4263.0,"tp":150.0,"lat":19.79893224232561,"lon":75.38869440273733,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Ladgaon","t":"Aurangabad","s":"Bhartat","p":1254.0,"tp":60.0,"lat":19.849723500707842,"lon":75.17754890444975,"y":[0,0,0,0],"tot":0.0},{"v":"Ladsawangi","t":"Aurangabad","s":"Vitthal","p":7281.0,"tp":100.0,"lat":19.951302528861287,"lon":75.38650700316032,"y":[0,0,0,0],"tot":0.0},{"v":"Lamkana","t":"Aurangabad","s":"Vitthal","p":1450.0,"tp":50.0,"lat":19.783489705908355,"lon":75.48135766114768,"y":[0,1.0,5.0,1.0],"tot":7.0},{"v":"Landakwadi","t":"Aurangabad","s":"Bhartat","p":0,"tp":0,"lat":19.911239645746488,"lon":75.18714995357107,"y":[0,0,0,0],"tot":0.0},{"v":"Laygaon","t":"Aurangabad","s":"Bhartat","p":1543.0,"tp":25.0,"lat":19.79077297928362,"lon":75.40433059638653,"y":[1.0,0,2.0,4.0],"tot":7.0},{"v":"Lingdari","t":"Aurangabad","s":"Sharad","p":625.0,"tp":8.0,"lat":19.974444720011622,"lon":75.21025426514197,"y":[0,0,0,0],"tot":0.0},{"v":"Mahalpimpri","t":"Aurangabad","s":"Vitthal","p":947.0,"tp":15.0,"lat":19.794718031041803,"lon":75.39406105163143,"y":[0,0,0,0],"tot":0.0},{"v":"Mahamadpur","t":"Aurangabad","s":"Vitthal","p":179.0,"tp":5.0,"lat":19.759405792710492,"lon":75.28192488319213,"y":[0,0,0,1.0],"tot":1.0},{"v":"Mukundwadi","t":"Aurangabad","s":"Purshottam","p":0,"tp":0.0,"lat":19.83386610167092,"lon":75.45305965867531,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Malharpur","t":"Aurangabad","s":"Vitthal","p":12.0,"tp":0.0,"lat":19.813590852310266,"lon":75.22453587855877,"y":[0,0,0,0],"tot":0.0},{"v":"Mitmita","t":"Aurangabad","s":"Sharad","p":0,"tp":0,"lat":19.888235073764744,"lon":75.50863640546221,"y":[1.0,0,0,0],"tot":1.0},{"v":"Maliwada","t":"Aurangabad","s":"Sharad","p":4403.0,"tp":75.0,"lat":19.954003012631134,"lon":75.38232436359925,"y":[0,0,1.0,0],"tot":1.0},{"v":"Malkapur","t":"Aurangabad","s":"Bhartat","p":354.0,"tp":10.0,"lat":19.850930397764596,"lon":75.19892931247564,"y":[0,0,0,2.0],"tot":2.0},{"v":"Mandki","t":"Aurangabad","s":"Vitthal","p":1779.0,"tp":25.0,"lat":19.90706684643133,"lon":75.46056928374483,"y":[0,0,0,0],"tot":0.0},{"v":"Mangrul","t":"Aurangabad","s":"Purshottam","p":1269.0,"tp":30.0,"lat":19.790536112226285,"lon":75.20426640014514,"y":[1.0,1.0,5.0,4.0],"tot":11.0},{"v":"Morvira","t":"Aurangabad","s":"Sharad","p":779.0,"tp":10.0,"lat":19.836255606687235,"lon":75.4694770401281,"y":[0,0,0,0],"tot":0.0},{"v":"Murshadkuli","t":"Aurangabad","s":"Vitthal","p":299.0,"tp":0.0,"lat":19.747033310104946,"lon":75.34425345216872,"y":[0,0,0,0],"tot":0.0},{"v":"Murshadpur","t":"Aurangabad","s":"Vitthal","p":441.0,"tp":0.0,"lat":19.90895725898299,"lon":75.36990283428634,"y":[0,0,0,0],"tot":0.0},{"v":"Murumkheda","t":"Aurangabad","s":"Vitthal","p":2413.0,"tp":50.0,"lat":19.9531346144631,"lon":75.29647505023061,"y":[0,0,0,0],"tot":0.0},{"v":"Nagonyachiwadi","t":"Aurangabad","s":"Bhartat","p":792.0,"tp":10.0,"lat":19.9057576690365,"lon":75.21058833955686,"y":[0,0,0,1.0],"tot":1.0},{"v":"Naregaon","t":"Aurangabad","s":"Purshottam","p":0,"tp":0,"lat":19.83003879335796,"lon":75.3016142721063,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Naigaon","t":"Aurangabad","s":"Sharad","p":3236.0,"tp":50.0,"lat":19.878344827582886,"lon":75.370542806562,"y":[4.0,4.0,4.0,1.0],"tot":13.0},{"v":"Naigavhan","t":"Aurangabad","s":"Vitthal","p":1610.0,"tp":50.0,"lat":19.789220028113068,"lon":75.23860999125547,"y":[0,0,0,0],"tot":0.0},{"v":"Nipani","t":"Aurangabad","s":"Bhartat","p":1607.0,"tp":20.0,"lat":19.794273569423684,"lon":75.4187728281227,"y":[0,0,0,0],"tot":0.0},{"v":"Ohar","t":"Aurangabad","s":"Sharad","p":2631.0,"tp":30.0,"lat":19.964665429384972,"lon":75.34027359414578,"y":[2.0,4.0,5.0,3.0],"tot":14.0},{"v":"Pachod","t":"Aurangabad","s":"Bhartat","p":1078.0,"tp":20.0,"lat":19.9627964197351,"lon":75.33350226537837,"y":[1.0,1.0,0,1.0],"tot":3.0},{"v":"Padegaon","t":"Aurangabad","s":"Purshottam","p":0,"tp":0,"lat":19.881432145955415,"lon":75.18379543728972,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Palshi","t":"Aurangabad","s":"Vitthal","p":3480.0,"tp":55.0,"lat":19.899513032743744,"lon":75.27004510826931,"y":[0,0,0,2.0],"tot":2.0},{"v":"Pandhari","t":"Aurangabad","s":"Bhartat","p":949.0,"tp":15.0,"lat":19.942166324909195,"lon":75.45990194455607,"y":[2.0,1.0,0,1.0],"tot":4.0},{"v":"Pardari","t":"Aurangabad","s":"Bhartat","p":684.0,"tp":15.0,"lat":19.76627744012933,"lon":75.23775431039259,"y":[0,0,2.0,0],"tot":2.0},{"v":"Pardari Tanda","t":"Aurangabad","s":"Bhartat","p":372.0,"tp":5.0,"lat":19.837305810956597,"lon":75.38847549070577,"y":[0,0,0,1.0],"tot":1.0},{"v":"Patoda","t":"Aurangabad","s":"Purshottam","p":2368.0,"tp":40.0,"lat":19.86941990347938,"lon":75.47473710782846,"y":[0,0,0,0],"tot":0.0},{"v":"Pimpal Khunta","t":"Aurangabad","s":"Vitthal","p":1179.0,"tp":20.0,"lat":19.937434329819514,"lon":75.46627206159249,"y":[0,0,1.0,0],"tot":1.0},{"v":"Pimpalgaon Pandhari","t":"Aurangabad","s":"Bhartat","p":1471.0,"tp":25.0,"lat":19.80576601373603,"lon":75.4453121039154,"y":[2.0,0,3.0,0],"tot":5.0},{"v":"Pimpri raja","t":"Aurangabad","s":"Bhartat","p":0,"tp":100.0,"lat":19.858410408975903,"lon":75.36387870655187,"y":[1.0,2.0,2.0,3.0],"tot":8.0},{"v":"Pimpri Bk","t":"Aurangabad","s":"Bhartat","p":5566.0,"tp":75.0,"lat":19.966099807922287,"lon":75.35539174458684,"y":[0,0,0,0],"tot":0.0},{"v":"Pimpri Kh","t":"Aurangabad","s":"Bhartat","p":2782.0,"tp":50.0,"lat":19.92365260417791,"lon":75.24550183643856,"y":[0,0,0,0],"tot":0.0},{"v":"Pirwadi","t":"Aurangabad","s":"Vitthal","p":666.0,"tp":5.0,"lat":19.88600838167415,"lon":75.23035102781482,"y":[0,0,0,0],"tot":0.0},{"v":"Pisadevi","t":"Aurangabad","s":"Vitthal","p":3929.0,"tp":70.0,"lat":19.829568478514563,"lon":75.28445103149629,"y":[0,0,0,0],"tot":0.0},{"v":"Pokhari","t":"Aurangabad","s":"Sharad","p":1293.0,"tp":25.0,"lat":19.795183387274662,"lon":75.3385780836853,"y":[0,0,0,0],"tot":0.0},{"v":"Rahalpatti Tanda","t":"Aurangabad","s":"Sharad","p":2047.0,"tp":27.0,"lat":19.8741181469892,"lon":75.25525519242863,"y":[0,0,0,1.0],"tot":1.0},{"v":"Rampur","t":"Aurangabad","s":"Vitthal","p":948.0,"tp":5.0,"lat":20.010431154499617,"lon":75.33822086516517,"y":[0,0,1.0,0],"tot":1.0},{"v":"Rampuri","t":"Aurangabad","s":"Sharad","p":749.0,"tp":15.0,"lat":19.86226727517421,"lon":75.40988418371487,"y":[0,0,0,0],"tot":0.0},{"v":"Rustumpur","t":"Aurangabad","s":"Vitthal","p":65.0,"tp":0.0,"lat":19.815758625926588,"lon":75.28050849370358,"y":[0,0,0,0],"tot":0.0},{"v":"Sahajatpur","t":"Aurangabad","s":"Bhartat","p":921.0,"tp":0.0,"lat":19.87786525102772,"lon":75.50899870206736,"y":[0,0,0,0],"tot":0.0},{"v":"Sahastramuli","t":"Aurangabad","s":"Bhartat","p":529.0,"tp":15.0,"lat":19.79609075903158,"lon":75.21978168424786,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Sanjkheda","t":"Aurangabad","s":"Bhartat","p":1628.0,"tp":50.0,"lat":19.828664484310245,"lon":75.378320778878,"y":[5.0,2.0,2.0,5.0],"tot":14.0},{"v":"Sarola","t":"Aurangabad","s":"Sharad","p":228.0,"tp":7.0,"lat":19.753557569988633,"lon":75.25544236062446,"y":[0,0,0,0],"tot":0.0},{"v":"Satala","t":"Aurangabad","s":"Sharad","p":982.0,"tp":9.0,"lat":19.888499913190053,"lon":75.3318121854957,"y":[0,0,1.0,0],"tot":1.0},{"v":"Satana","t":"Aurangabad","s":"Vitthal","p":822.0,"tp":60.0,"lat":19.97196529587997,"lon":75.33937708091104,"y":[1.0,2.0,1.0,1.0],"tot":5.0},{"v":"Satara","t":"Aurangabad","s":"Bhartat","p":2339.0,"tp":22.0,"lat":19.916369362675137,"lon":75.22214616878509,"y":[3.0,0,0,2.0],"tot":5.0},{"v":"Sawangi","t":"Aurangabad","s":"Sharad","p":4727.0,"tp":75.0,"lat":20.037100337083572,"lon":75.33402040893432,"y":[2.0,3.0,1.0,0],"tot":6.0},{"v":"Sayyadpur","t":"Aurangabad","s":"Vitthal","p":1065.0,"tp":40.0,"lat":19.984244586619234,"lon":75.38380598358891,"y":[0,0,1.0,0],"tot":1.0},{"v":"Selud","t":"Aurangabad","s":"Vitthal","p":1169.0,"tp":40.0,"lat":19.95625247034393,"lon":75.25533386457319,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Shahajapur","t":"Aurangabad","s":"Sharad","p":4278.0,"tp":50.0,"lat":19.87760798708384,"lon":75.26819998933449,"y":[1.0,0,0,2.0],"tot":3.0},{"v":"Shekta","t":"Aurangabad","s":"Vitthal","p":2351.0,"tp":50.0,"lat":19.82690569664349,"lon":75.33857513136151,"y":[1.0,0,1.0,1.0],"tot":3.0},{"v":"Shendra Kamangar","t":"Aurangabad","s":"Vitthal","p":2987.0,"tp":100.0,"lat":20.02522708224609,"lon":75.36127401769402,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Shendraban","t":"Aurangabad","s":"Vitthal","p":731.0,"tp":50.0,"lat":19.785787489619132,"lon":75.36392583214338,"y":[0,0,0,0],"tot":0.0},{"v":"Shernapur","t":"Aurangabad","s":"Sharad","p":1712.0,"tp":70.0,"lat":19.765950542024186,"lon":75.4398299453232,"y":[2.0,1.0,0,0],"tot":3.0},{"v":"Shevga","t":"Aurangabad","s":"Vitthal","p":2448.0,"tp":70.0,"lat":19.843525612742283,"lon":75.22350551126455,"y":[1.0,2.0,3.0,1.0],"tot":7.0},{"v":"Shivgad Tanda","t":"Aurangabad","s":"Bhartat","p":368.0,"tp":10.0,"lat":19.91861812790989,"lon":75.37323296774917,"y":[0,0,0,0],"tot":0.0},{"v":"Sindon","t":"Aurangabad","s":"Bhartat","p":1030.0,"tp":25.0,"lat":19.87424585150474,"lon":75.24709459007514,"y":[1.0,0,0,0],"tot":1.0},{"v":"Sirasmal Tanda","t":"Aurangabad","s":"Bhartat","p":109.0,"tp":5.0,"lat":19.843659945336128,"lon":75.36873751883387,"y":[0,0,0,0],"tot":0.0},{"v":"Sultanpur","t":"Aurangabad","s":"Vitthal","p":509.0,"tp":0.0,"lat":19.807842493869263,"lon":75.40062180750411,"y":[0,0,0,0],"tot":0.0},{"v":"Sundarwadi","t":"Aurangabad","s":"Bhartat","p":506.0,"tp":20.0,"lat":19.996109059909326,"lon":75.39083261272444,"y":[0,1.0,0,0],"tot":1.0},{"v":"Shyamwadi","t":"Aurangabad","s":"Vitthal","p":0,"tp":0,"lat":19.93423929270066,"lon":75.26027469576024,"y":[0,0,0,2.0],"tot":2.0},{"v":"Takli Shimpi","t":"Aurangabad","s":"Bhartat","p":523.0,"tp":12.0,"lat":19.76873159085596,"lon":75.45530565194147,"y":[0,0,0,0],"tot":0.0},{"v":"Takli Vaidya","t":"Aurangabad","s":"Bhartat","p":826.0,"tp":12.0,"lat":19.835469402795923,"lon":75.25021467773537,"y":[0,0,1.0,0],"tot":1.0},{"v":"Taklimali","t":"Aurangabad","s":"Bhartat","p":1042.0,"tp":10.0,"lat":19.897802602403793,"lon":75.28699166899386,"y":[1.0,0,0,0],"tot":1.0},{"v":"Tisgaon","t":"Aurangabad","s":"Sharad","p":12789.0,"tp":50.0,"lat":19.75542588356333,"lon":75.2298832714954,"y":[6.0,1.0,4.0,4.0],"tot":15.0},{"v":"Tohla Naik Tanda","t":"Aurangabad","s":"Bhartat","p":467.0,"tp":5.0,"lat":19.930954949489998,"lon":75.31071737871426,"y":[0,0,0,0],"tot":0.0},{"v":"Tongaon","t":"Aurangabad","s":"Bhartat","p":1184.0,"tp":50.0,"lat":19.917912580893933,"lon":75.48641598418122,"y":[0,0,0,0],"tot":0.0},{"v":"Tuljapur","t":"Aurangabad","s":"Bhartat","p":714.0,"tp":0.0,"lat":19.887112547510597,"lon":75.50189115712774,"y":[0,0,0,0],"tot":0.0},{"v":"Uchalti","t":"Aurangabad","s":"Bhartat","p":301.0,"tp":10.0,"lat":19.865221252610787,"lon":75.30921302489273,"y":[0,0,0,0],"tot":0.0},{"v":"Wadgaon Kh.","t":"Aurangabad","s":"Purshottam","p":1495.0,"tp":55.0,"lat":19.949884800264368,"lon":75.24587138504668,"y":[5.0,3.0,2.0,5.0],"tot":15.0},{"v":"Wadkha","t":"Aurangabad","s":"Vitthal","p":1814.0,"tp":15.0,"lat":19.95791153451457,"lon":75.30107681733823,"y":[0,0,2.0,4.0],"tot":6.0},{"v":"Wahegaon","t":"Aurangabad","s":"Vitthal","p":1424.0,"tp":50.0,"lat":19.923274109623485,"lon":75.4393789037518,"y":[0,0,0,0],"tot":0.0},{"v":"Waladgaon","t":"Aurangabad","s":"Purshottam","p":3270.0,"tp":70.0,"lat":19.72598477876539,"lon":75.32826810485372,"y":[1.0,0,1.0,1.0],"tot":3.0},{"v":"Wanjarwadi","t":"Aurangabad","s":"Sharad","p":781.0,"tp":40.0,"lat":19.90890443187881,"lon":75.28659553167067,"y":[0,0,0,0],"tot":0.0},{"v":"Warud","t":"Aurangabad","s":"Vitthal","p":3019.0,"tp":100.0,"lat":19.977352649147527,"lon":75.41230925314024,"y":[1.0,0,1.0,3.0],"tot":5.0},{"v":"Warzadi","t":"Aurangabad","s":"Vitthal","p":2786.0,"tp":100.0,"lat":19.861543403275938,"lon":75.40685355855094,"y":[0,1.0,2.0,3.0],"tot":6.0},{"v":"Zalta","t":"Aurangabad","s":"Bhartat","p":2304.0,"tp":70.0,"lat":19.766670754458854,"lon":75.4263759722129,"y":[1.0,1.0,0,1.0],"tot":3.0},{"v":"Abdulpur","t":"Gangapur","s":"Balasaheb Toge","p":317.0,"tp":0,"lat":19.699837283672988,"lon":75.05933208706833,"y":[0,2.0,0,0],"tot":2.0},{"v":"Agar Kanadgaon","t":"Gangapur","s":"Pravin Chavan","p":1966.0,"tp":0,"lat":19.57537940162397,"lon":74.96494028041643,"y":[6.0,6.0,2.0,4.0],"tot":18.0},{"v":"Agathan","t":"Gangapur","s":"Janesh","p":836.0,"tp":0,"lat":19.628100762541433,"lon":74.9797008399482,"y":[0,0,0,0],"tot":0.0},{"v":"Ager Wadgaon","t":"Gangapur","s":"Pravin Chavan","p":1785.0,"tp":0,"lat":19.65960122204288,"lon":75.1031324237301,"y":[1.0,1.0,1.0,0],"tot":3.0},{"v":"Akoli Wadgaon","t":"Gangapur","s":"Dyaneshwar","p":2253.0,"tp":0,"lat":19.817237924160274,"lon":74.95053099596022,"y":[1.0,0,0,1.0],"tot":2.0},{"v":"Alamgirpur","t":"Gangapur","s":"Balasaheb Toge","p":576.0,"tp":0,"lat":19.74599886656037,"lon":74.9443249127902,"y":[0,0,0,0],"tot":0.0},{"v":"Amalner","t":"Gangapur","s":"Pravin Chavan","p":2298.0,"tp":0,"lat":19.58077110398503,"lon":74.98681839381487,"y":[3.0,2.0,1.0,3.0],"tot":9.0},{"v":"Ambegaon","t":"Gangapur","s":"Dyaneshwar","p":907.0,"tp":0,"lat":19.641220266134688,"lon":74.89630301086491,"y":[0,0,4.0,1.0],"tot":5.0},{"v":"Ambelohal","t":"Gangapur","s":"Dyaneshwar","p":4663.0,"tp":0,"lat":19.688472822393123,"lon":75.02699085798628,"y":[0,1.0,4.0,2.0],"tot":7.0},{"v":"Aminabad","t":"Gangapur","s":"Dyaneshwar","p":163.0,"tp":0,"lat":19.72011986788123,"lon":75.13158275193257,"y":[0,0,0,0],"tot":0.0},{"v":"Antapur","t":"Gangapur","s":"Janesh","p":327.0,"tp":0,"lat":19.57235181845966,"lon":74.98703577794026,"y":[0,0,0,0],"tot":0.0},{"v":"Antapur","t":"Gangapur","s":"Janesh","p":238.0,"tp":0,"lat":19.57235181845966,"lon":74.98703577794026,"y":[0,0,0,0],"tot":0.0},{"v":"Apegaon","t":"Gangapur","s":"Janesh","p":644.0,"tp":0,"lat":19.782735268702343,"lon":75.09024148780865,"y":[0,0,0,1.0],"tot":1.0},{"v":"Arapur","t":"Gangapur","s":"Janesh","p":64.0,"tp":0,"lat":19.72910063557125,"lon":74.91588501250577,"y":[0,0,0,0],"tot":0.0},{"v":"Asegaon","t":"Gangapur","s":"Dyaneshwar","p":2356.0,"tp":0,"lat":19.76266541831025,"lon":74.90802542340302,"y":[0,2.0,1.0,0],"tot":3.0},{"v":"Aurangpur","t":"Gangapur","s":"Balasaheb Toge","p":407.0,"tp":0,"lat":19.667958475193497,"lon":75.12280664893967,"y":[0,0,0,1.0],"tot":1.0},{"v":"Babargaon","t":"Gangapur","s":"Pravin Chavan","p":865.0,"tp":0,"lat":19.733404780913624,"lon":75.0425206599023,"y":[0,0,0,0],"tot":0.0},{"v":"Babhulgaon","t":"Gangapur","s":"Janesh","p":1338.0,"tp":0,"lat":19.762571439495183,"lon":74.98353379440776,"y":[0,0,0,0],"tot":0.0},{"v":"Bagadi","t":"Gangapur","s":"Pravin Chavan","p":1711.0,"tp":0,"lat":19.77509982745607,"lon":75.02702632525907,"y":[7.0,1.0,5.0,4.0],"tot":17.0},{"v":"Balapur","t":"Gangapur","s":"Dyaneshwar","p":229.0,"tp":0,"lat":19.668942554959006,"lon":75.04518973561144,"y":[0,0,0,0],"tot":0.0},{"v":"Bargipur","t":"Gangapur","s":"Dyaneshwar","p":225.0,"tp":0,"lat":19.69566387373204,"lon":74.88478427974515,"y":[0,0,0,0],"tot":0.0},{"v":"Bhagathan","t":"Gangapur","s":"Janesh","p":861.0,"tp":0,"lat":19.70855835711382,"lon":74.89535524059667,"y":[0,0,0,0],"tot":0.0},{"v":"Bhalgaon","t":"Gangapur","s":"Dyaneshwar","p":1542.0,"tp":0,"lat":19.788650965316407,"lon":75.10065930775443,"y":[0,0,0,1.0],"tot":1.0},{"v":"Bhendala","t":"Gangapur","s":"Pravin Chavan","p":2691.0,"tp":0,"lat":19.76335812846782,"lon":75.11009287348136,"y":[3.0,1.0,2.0,5.0],"tot":11.0},{"v":"Bhiw-dhanora","t":"Gangapur","s":"Pravin Chavan","p":2226.0,"tp":0,"lat":19.6895414884928,"lon":75.11613491235113,"y":[2.0,1.0,0,2.0],"tot":5.0},{"v":"Bhoigaon","t":"Gangapur","s":"Pravin Chavan","p":1144.0,"tp":0,"lat":19.77918888998432,"lon":75.08093585206188,"y":[0,0,1.0,0],"tot":1.0},{"v":"Bolegaon","t":"Gangapur","s":"Pravin Chavan","p":904.0,"tp":0,"lat":19.68658474727972,"lon":75.02335024650137,"y":[0,0,0,0],"tot":0.0},{"v":"Bolthan","t":"Gangapur","s":"Dyaneshwar","p":577.0,"tp":0,"lat":19.57717228345684,"lon":74.94329856150974,"y":[0,0,0,0],"tot":0.0},{"v":"Borgaon","t":"Gangapur","s":"Dyaneshwar","p":1178.0,"tp":0,"lat":19.768161190862322,"lon":74.94848104993302,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Borodi","t":"Gangapur","s":"Dyaneshwar","p":367.0,"tp":0,"lat":19.793749530601872,"lon":75.11450192732747,"y":[0,0,0,0],"tot":0.0},{"v":"Butte Wadgaon","t":"Gangapur","s":"Dyaneshwar","p":1193.0,"tp":0,"lat":19.624283425553003,"lon":74.91456993294192,"y":[0,0,0,0],"tot":0.0},{"v":"Chandikpur","t":"Gangapur","s":"Dyaneshwar","p":588.0,"tp":0,"lat":19.80524316445153,"lon":75.01703134558417,"y":[0,0,0,0],"tot":0.0},{"v":"Chinchkheda","t":"Gangapur","s":"Janesh","p":496.0,"tp":0,"lat":19.677052533471656,"lon":74.95059569797861,"y":[1.0,0,0,3.0],"tot":4.0},{"v":"Chinchpur","t":"Gangapur","s":"Pravin Chavan","p":0,"tp":0,"lat":19.65674901777463,"lon":75.14005167739704,"y":[0,0,0,1.0],"tot":1.0},{"v":"Dahegaon","t":"Gangapur","s":"Balasaheb Toge","p":2018.0,"tp":0,"lat":19.676565264683802,"lon":75.02575256936433,"y":[0,0,0,2.0],"tot":2.0},{"v":"Daigaon","t":"Gangapur","s":"Janesh","p":1164.0,"tp":0,"lat":19.614711591080912,"lon":74.89873769246223,"y":[0,1.0,2.0,1.0],"tot":4.0},{"v":"Deokarwadi","t":"Gangapur","s":"Dyaneshwar","p":359.0,"tp":0,"lat":19.652726508131103,"lon":75.1524689166422,"y":[0,0,0,0],"tot":0.0},{"v":"Derda","t":"Gangapur","s":"Janesh","p":619.0,"tp":0,"lat":19.57439119874844,"lon":74.99441156535514,"y":[0,1.0,0,0],"tot":1.0},{"v":"Derhal","t":"Gangapur","s":"Janesh","p":561.0,"tp":0,"lat":19.78775065004875,"lon":74.98603481534381,"y":[0,0,0,0],"tot":0.0},{"v":"Devli","t":"Gangapur","s":"Janesh","p":986.0,"tp":0,"lat":19.56058039720672,"lon":74.97359907258561,"y":[1.0,0,0,0],"tot":1.0},{"v":"Dhamori Bk.","t":"Gangapur","s":"Balasaheb Toge","p":2440.0,"tp":0,"lat":19.665708514914414,"lon":74.90056646549803,"y":[0,3.0,4.0,0],"tot":7.0},{"v":"Dhamori Kh.","t":"Gangapur","s":"Janesh","p":1927.0,"tp":0,"lat":19.692546121672255,"lon":75.07365186229917,"y":[0,1.0,0,5.0],"tot":6.0},{"v":"Dhoregaon","t":"Gangapur","s":"Balasaheb Toge","p":1066.0,"tp":0,"lat":19.73821634137899,"lon":74.88437656807945,"y":[0,1.0,0,0],"tot":1.0},{"v":"Dighi","t":"Gangapur","s":"Dyaneshwar","p":712.0,"tp":0,"lat":19.709980411095646,"lon":74.92746288040523,"y":[2.0,1.0,0,0],"tot":3.0},{"v":"Dinwada","t":"Gangapur","s":"Janesh","p":914.0,"tp":0,"lat":19.694513041921848,"lon":74.87739983612,"y":[0,0,0,1.0],"tot":1.0},{"v":"Diwashi","t":"Gangapur","s":"Janesh","p":671.0,"tp":0,"lat":19.768319048642198,"lon":75.06946740743413,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Domegaon","t":"Gangapur","s":"Dyaneshwar","p":1420.0,"tp":0,"lat":19.688574696367628,"lon":75.03659565175056,"y":[2.0,0,1.0,2.0],"tot":5.0},{"v":"Dongaon","t":"Gangapur","s":"Janesh","p":2321.0,"tp":0,"lat":19.799544065534025,"lon":75.10372979352064,"y":[0,1.0,3.0,2.0],"tot":6.0},{"v":"Ekburji Waghalgaon","t":"Gangapur","s":"Janesh","p":312.0,"tp":0,"lat":19.636041490866894,"lon":74.98067164215166,"y":[0,0,0,0],"tot":0.0},{"v":"Eklahera","t":"Gangapur","s":"Dyaneshwar","p":1230.0,"tp":0,"lat":19.726242918380823,"lon":74.85941981531705,"y":[1.0,3.0,2.0,4.0],"tot":10.0},{"v":"Fajalpur","t":"Gangapur","s":"Dyaneshwar","p":131.0,"tp":0,"lat":19.71759624238271,"lon":74.96701220883394,"y":[0,0,0,0],"tot":0.0},{"v":"Fatiyabad","t":"Gangapur","s":"Dyaneshwar","p":1479.0,"tp":0,"lat":19.7137601228268,"lon":74.86522262911511,"y":[0,0,1.0,0],"tot":1.0},{"v":"Fatulabad","t":"Gangapur","s":"Dyaneshwar","p":391.0,"tp":0,"lat":19.76500957921497,"lon":74.96322991699232,"y":[0,1.0,0,0],"tot":1.0},{"v":"Fulshevra","t":"Gangapur","s":"Janesh","p":1271.0,"tp":0,"lat":19.706616231830903,"lon":74.93841215034314,"y":[0,0,2.0,3.0],"tot":5.0},{"v":"Gajgaon","t":"Gangapur","s":"Janesh","p":2565.0,"tp":0,"lat":19.706070305541157,"lon":74.94991502929238,"y":[1.0,0,1.0,6.0],"tot":8.0},{"v":"Galnimb","t":"Gangapur","s":"Pravin Chavan","p":1466.0,"tp":0,"lat":19.742056228172018,"lon":75.09632862291583,"y":[0,0,1.0,0],"tot":1.0},{"v":"Ganeshwadi","t":"Gangapur","s":"Pravin Chavan","p":1012.0,"tp":0,"lat":19.80130367406889,"lon":74.9675588560243,"y":[0,0,2.0,5.0],"tot":7.0},{"v":"Gangapur","t":"Gangapur","s":"Pravin Chavan","p":159.0,"tp":0,"lat":19.6933,"lon":75.0083,"y":[7.0,4.0,11.0,12.0],"tot":34.0},{"v":"Gavli Dhanora","t":"Gangapur","s":"Janesh","p":1067.0,"tp":0,"lat":19.600995266845214,"lon":75.01272797649622,"y":[0,1.0,3.0,0],"tot":4.0},{"v":"Gavli Shivra","t":"Gangapur","s":"Janesh","p":2299.0,"tp":0,"lat":19.806963059442626,"lon":75.04916657990552,"y":[0,0,1.0,0],"tot":1.0},{"v":"Ghanegaon","t":"Gangapur","s":"Dyaneshwar","p":2897.0,"tp":0,"lat":19.765475323169397,"lon":75.07052438550353,"y":[0,1.0,3.0,1.0],"tot":5.0},{"v":"Ghodegaon","t":"Gangapur","s":"Dyaneshwar","p":1787.0,"tp":0,"lat":19.567554485534618,"lon":74.96007075678905,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Golegaon","t":"Gangapur","s":"Janesh","p":539.0,"tp":0,"lat":19.792263079943446,"lon":74.97987759256175,"y":[0,0,0,0],"tot":0.0},{"v":"Gopalwadi","t":"Gangapur","s":"Dyaneshwar","p":597.0,"tp":0,"lat":19.736352007843227,"lon":74.8869885011111,"y":[0,0,0,0],"tot":0.0},{"v":"Govindpur","t":"Gangapur","s":"Dyaneshwar","p":247.0,"tp":0,"lat":19.684123031356403,"lon":75.02685948795438,"y":[0,0,0,0],"tot":0.0},{"v":"Guru Dhanora","t":"Gangapur","s":"Balasaheb Toge","p":1706.0,"tp":0,"lat":19.74776148901632,"lon":75.09897694292614,"y":[6.0,1.0,1.0,2.0],"tot":10.0},{"v":"Hadiyabad","t":"Gangapur","s":"Dyaneshwar","p":403.0,"tp":0,"lat":19.707635940384378,"lon":74.98614401948717,"y":[0,0,0,0],"tot":0.0},{"v":"Haibatpur","t":"Gangapur","s":"Pravin Chavan","p":801.0,"tp":0,"lat":19.732138737818403,"lon":74.90521403707132,"y":[0,0,0,1.0],"tot":1.0},{"v":"Hakikatpur","t":"Gangapur","s":"Dyaneshwar","p":493.0,"tp":0,"lat":19.6134955209944,"lon":75.00481827333047,"y":[0,0,0,0],"tot":0.0},{"v":"Hamjabad","t":"Gangapur","s":"Dyaneshwar","p":81.0,"tp":0,"lat":19.768269589167247,"lon":74.97586693796453,"y":[0,0,0,0],"tot":0.0},{"v":"Hanumantgaon","t":"Gangapur","s":"Pravin Chavan","p":276.0,"tp":0,"lat":19.744255714663787,"lon":74.98212715786498,"y":[0,0,1.0,0],"tot":1.0},{"v":"Harsuli","t":"Gangapur","s":"Balasaheb Toge","p":618.0,"tp":0,"lat":19.796609893391633,"lon":74.90782663257738,"y":[0,0,0,0],"tot":0.0},{"v":"Hirapur","t":"Gangapur","s":"Balasaheb Toge","p":986.0,"tp":0,"lat":19.808657132393435,"lon":75.04374365916053,"y":[0,0,0,0],"tot":0.0},{"v":"Itawa","t":"Gangapur","s":"Dyaneshwar","p":2054.0,"tp":0,"lat":19.58176098520979,"lon":74.92739918095263,"y":[4.0,0,1.0,0],"tot":5.0},{"v":"Jakhmatha","t":"Gangapur","s":"Pravin Chavan","p":0,"tp":0,"lat":19.62752072479656,"lon":74.95404033974754,"y":[2.0,4.0,7.0,3.0],"tot":16.0},{"v":"Jambhala","t":"Gangapur","s":"Dyaneshwar","p":1865.0,"tp":0,"lat":19.621349827413702,"lon":74.92011670028975,"y":[1.0,0,0,1.0],"tot":2.0},{"v":"Jamgaon","t":"Gangapur","s":"Pravin Chavan","p":6709.0,"tp":0,"lat":19.682166081125118,"lon":74.86582370460135,"y":[4.0,3.0,3.0,9.0],"tot":19.0},{"v":"Jikthan","t":"Gangapur","s":"Balasaheb Toge","p":1893.0,"tp":0,"lat":19.832690538640563,"lon":74.98867047859746,"y":[3.0,3.0,3.0,2.0],"tot":11.0},{"v":"Jogeshwari","t":"Gangapur","s":"Balasaheb Toge","p":8272.0,"tp":0,"lat":19.78879499463128,"lon":74.96833435753221,"y":[1.0,1.0,2.0,0],"tot":4.0},{"v":"Kaigaon","t":"Gangapur","s":"Pravin Chavan","p":3442.0,"tp":0,"lat":19.71004598972302,"lon":75.02414306225896,"y":[1.0,0,0,1.0],"tot":2.0},{"v":"Kalegaon","t":"Gangapur","s":"Dyaneshwar","p":846.0,"tp":0,"lat":19.80433066676012,"lon":75.0019238300623,"y":[0,0,0,0],"tot":0.0},{"v":"Kamlapur","t":"Gangapur","s":"Balasaheb Toge","p":937.0,"tp":0,"lat":19.767351698404255,"lon":74.93580321308995,"y":[1.0,2.0,0,0],"tot":3.0},{"v":"Kankori","t":"Gangapur","s":"Dyaneshwar","p":1705.0,"tp":0,"lat":19.68650942099224,"lon":75.01240293623745,"y":[1.0,2.0,4.0,0],"tot":7.0},{"v":"Kasoda","t":"Gangapur","s":"Dyaneshwar","p":2213.0,"tp":0,"lat":19.804215824935888,"lon":75.09290261499673,"y":[0,0,0,3.0],"tot":3.0},{"v":"Katepimpalgaon","t":"Gangapur","s":"Dyaneshwar","p":3896.0,"tp":0,"lat":19.700697540240373,"lon":75.14686026007686,"y":[0,0,2.0,0],"tot":2.0},{"v":"Khadak Narala","t":"Gangapur","s":"Janesh","p":965.0,"tp":0,"lat":19.692239583390027,"lon":75.12154100425803,"y":[0,0,2.0,0],"tot":2.0},{"v":"Khadak Waghalgaon","t":"Gangapur","s":"Dyaneshwar","p":778.0,"tp":0,"lat":19.60144106085761,"lon":74.94647493209368,"y":[0,0,0,0],"tot":0.0},{"v":"Khadgaon","t":"Gangapur","s":"Janesh","p":843.0,"tp":0,"lat":19.62916851815881,"lon":75.01865572243173,"y":[0,2.0,3.0,2.0],"tot":7.0},{"v":"Khojewadi","t":"Gangapur","s":"Dyaneshwar","p":1103.0,"tp":0,"lat":19.653607840650377,"lon":74.99975565502744,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Khopeshwar","t":"Gangapur","s":"Dyaneshwar","p":355.0,"tp":0,"lat":19.662003148137,"lon":75.0440639173282,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kinhal","t":"Gangapur","s":"Janesh","p":830.0,"tp":0,"lat":19.64111479228121,"lon":74.96196944143632,"y":[0,0,1.0,0],"tot":1.0},{"v":"Kobapur","t":"Gangapur","s":"Pravin Chavan","p":669.0,"tp":0,"lat":19.65899065790264,"lon":74.9835361004904,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kodapur","t":"Gangapur","s":"Balasaheb Toge","p":916.0,"tp":0,"lat":19.793556017363038,"lon":75.02805336638774,"y":[0,0,0,0],"tot":0.0},{"v":"Kolghar","t":"Gangapur","s":"Dyaneshwar","p":1002.0,"tp":0,"lat":19.658899149281638,"lon":75.03299526502617,"y":[0,0,0,0],"tot":0.0},{"v":"Lakhmapur","t":"Gangapur","s":"Pravin Chavan","p":1344.0,"tp":0,"lat":19.61681454602795,"lon":74.90967809852167,"y":[1.0,0,1.0,5.0],"tot":7.0},{"v":"Lanzi","t":"Gangapur","s":"Balasaheb Toge","p":719.0,"tp":0,"lat":19.708963393426863,"lon":75.02705076595885,"y":[1.0,1.0,3.0,2.0],"tot":7.0},{"v":"LASUR STATION","t":"Gangapur","s":"Janesh","p":0,"tp":0,"lat":19.5897221160836,"lon":75.09967622719343,"y":[1.0,0,0,0],"tot":1.0},{"v":"Limbe Jalgaon","t":"Gangapur","s":"Balasaheb Toge","p":3229.0,"tp":0,"lat":19.76467675992092,"lon":75.05496428344395,"y":[0,1.0,2.0,3.0],"tot":6.0},{"v":"Mahalaxmi Kheda","t":"Gangapur","s":"Balasaheb Toge","p":559.0,"tp":0,"lat":19.65710076359775,"lon":74.98805244890158,"y":[1.0,0,0,0],"tot":1.0},{"v":"Mahebubkheda","t":"Gangapur","s":"Janesh","p":928.0,"tp":0,"lat":19.674181062157032,"lon":75.02309497445108,"y":[0,0,0,0],"tot":0.0},{"v":"Mahmadpur","t":"Gangapur","s":"Janesh","p":427.0,"tp":0,"lat":19.81093011564283,"lon":75.02705530992614,"y":[0,0,0,3.0],"tot":3.0},{"v":"Maholi","t":"Gangapur","s":"Pravin Chavan","p":920.0,"tp":0,"lat":19.701949791244346,"lon":74.93749685855605,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Maliwadgaon","t":"Gangapur","s":"Janesh","p":2853.0,"tp":0,"lat":19.694528721650315,"lon":75.13124139239932,"y":[0,1.0,0,0],"tot":1.0},{"v":"Maliwada","t":"Gangapur","s":"Balasaheb Toge","p":0,"tp":0,"lat":19.820376283568834,"lon":75.03943350224475,"y":[0,1.0,0,0],"tot":1.0},{"v":"Malkapur","t":"Gangapur","s":"Balasaheb Toge","p":243.0,"tp":0,"lat":19.788424114827546,"lon":75.02748866473955,"y":[0,0,0,0],"tot":0.0},{"v":"Malunja Bk.","t":"Gangapur","s":"Dyaneshwar","p":922.0,"tp":0,"lat":19.71951645514943,"lon":74.93395608904716,"y":[2.0,0,1.0,0],"tot":3.0},{"v":"Malunja Kh.","t":"Gangapur","s":"Dyaneshwar","p":902.0,"tp":0,"lat":19.568496189971373,"lon":75.07769438485954,"y":[0,0,0,0],"tot":0.0},{"v":"Mamdapur","t":"Gangapur","s":"Pravin Chavan","p":846.0,"tp":0,"lat":19.80076481136133,"lon":74.92181206073803,"y":[3.0,3.0,1.0,3.0],"tot":10.0},{"v":"Mandwa","t":"Gangapur","s":"Balasaheb Toge","p":854.0,"tp":0,"lat":19.595654772470247,"lon":75.09667291587952,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Mangegaon","t":"Gangapur","s":"Balasaheb Toge","p":1175.0,"tp":0,"lat":19.745993868194663,"lon":75.10210466511407,"y":[0,0,2.0,0],"tot":2.0},{"v":"Manjari","t":"Gangapur","s":"Pravin Chavan","p":3941.0,"tp":0,"lat":19.640592092198847,"lon":74.89851685338353,"y":[0,0,5.0,10.0],"tot":15.0},{"v":"Manjarpur","t":"Gangapur","s":"Dyaneshwar","p":164.0,"tp":0,"lat":19.555710437765697,"lon":74.98460440116547,"y":[0,0,0,0],"tot":0.0},{"v":"Maujudabad","t":"Gangapur","s":"Dyaneshwar","p":238.0,"tp":0,"lat":19.7244218236821,"lon":74.94190990549032,"y":[0,0,0,0],"tot":0.0},{"v":"Mendhi","t":"Gangapur","s":"Dyaneshwar","p":441.0,"tp":0,"lat":19.700968275658106,"lon":74.97167622952067,"y":[0,0,0,0],"tot":0.0},{"v":"Mendhipur","t":"Gangapur","s":"Dyaneshwar","p":298.0,"tp":0,"lat":19.629565199516744,"lon":74.88251541921943,"y":[0,0,0,0],"tot":0.0},{"v":"Mhasa","t":"Gangapur","s":"Dyaneshwar","p":482.0,"tp":0,"lat":19.77686018075969,"lon":75.08076252255306,"y":[0,0,1.0,0],"tot":1.0},{"v":"Mirzapur","t":"Gangapur","s":"Dyaneshwar","p":280.0,"tp":0,"lat":19.80739926097174,"lon":75.08989642425112,"y":[0,0,0,0],"tot":0.0},{"v":"Mudhesh Wadgaon","t":"Gangapur","s":"Pravin Chavan","p":1374.0,"tp":0,"lat":19.626514380925787,"lon":75.09961845172985,"y":[1.0,0,1.0,3.0],"tot":5.0},{"v":"Murmi","t":"Gangapur","s":"Balasaheb Toge","p":767.0,"tp":0,"lat":19.784769179360584,"lon":75.1224619130199,"y":[0,0,0,0],"tot":0.0},{"v":"Murshidabad","t":"Gangapur","s":"Balasaheb Toge","p":694.0,"tp":0,"lat":19.706413574792645,"lon":74.94049684758266,"y":[0,1.0,0,0],"tot":1.0},{"v":"Mustafabad","t":"Gangapur","s":"Balasaheb Toge","p":354.0,"tp":0,"lat":19.551816274564448,"lon":74.98042140734779,"y":[0,0,0,0],"tot":0.0},{"v":"Nagapur","t":"Gangapur","s":"Balasaheb Toge","p":91.0,"tp":0,"lat":19.728696376453136,"lon":75.0400362036169,"y":[0,0,0,0],"tot":0.0},{"v":"Naigaon","t":"Gangapur","s":"Balasaheb Toge","p":3267.0,"tp":0,"lat":19.771769593989877,"lon":75.0801572030127,"y":[0,0,0,1.0],"tot":1.0},{"v":"Nandeda","t":"Gangapur","s":"Dyaneshwar","p":1048.0,"tp":0,"lat":19.705861489985956,"lon":74.96867410720459,"y":[1.0,3.0,6.0,2.0],"tot":12.0},{"v":"Nandrabad","t":"Gangapur","s":"Balasaheb Toge","p":502.0,"tp":0,"lat":19.662758391694265,"lon":74.90735129759688,"y":[0,0,0,0],"tot":0.0},{"v":"Narayanpur","t":"Gangapur","s":"Balasaheb Toge","p":125.0,"tp":0,"lat":19.709357151425664,"lon":75.02108079187711,"y":[2.0,0,3.0,2.0],"tot":7.0},{"v":"Narayanpur Bk.","t":"Gangapur","s":"Balasaheb Toge","p":2178.0,"tp":0,"lat":19.768923202822993,"lon":74.92277847365918,"y":[0,0,0,0],"tot":0.0},{"v":"Narayanpur Kh.","t":"Gangapur","s":"Balasaheb Toge","p":502.0,"tp":0,"lat":19.66888093680278,"lon":75.12772601735723,"y":[0,0,0,1.0],"tot":1.0},{"v":"Narsapur","t":"Gangapur","s":"Balasaheb Toge","p":650.0,"tp":0,"lat":19.604782451093318,"lon":74.94854925251292,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Nawabpur","t":"Gangapur","s":"Pravin Chavan","p":1265.0,"tp":0,"lat":19.59915521151116,"lon":74.9628331193605,"y":[0,0,0,0],"tot":0.0},{"v":"Nevargaon","t":"Gangapur","s":"Pravin Chavan","p":4187.0,"tp":0,"lat":19.590943510700665,"lon":74.93156218491553,"y":[2.0,3.0,2.0,1.0],"tot":8.0},{"v":"Pachapirwadi","t":"Gangapur","s":"Janesh","p":1422.0,"tp":0,"lat":19.679633876689394,"lon":74.91891800242634,"y":[1.0,0,1.0,1.0],"tot":3.0},{"v":"Padalsa","t":"Gangapur","s":"Janesh","p":765.0,"tp":0,"lat":19.663204016951138,"lon":75.00621123722196,"y":[0,0,0,0],"tot":0.0},{"v":"Padampur","t":"Gangapur","s":"Balasaheb Toge","p":270.0,"tp":0,"lat":19.75391412004003,"lon":75.01821399686001,"y":[0,1.0,0,3.0],"tot":4.0},{"v":"Pahadpur","t":"Gangapur","s":"Unassigned","p":531.0,"tp":0,"lat":19.73206480673823,"lon":75.09929871867784,"y":[0,0,0,0],"tot":0.0},{"v":"Pakhora","t":"Gangapur","s":"Pravin Chavan","p":1087.0,"tp":0,"lat":19.584859639362,"lon":74.95019000102019,"y":[1.0,1.0,1.0,0],"tot":3.0},{"v":"Palasgaon","t":"Gangapur","s":"Dyaneshwar","p":894.0,"tp":0,"lat":19.697287538054212,"lon":74.92577863017317,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Pandharohal","t":"Gangapur","s":"Balasaheb Toge","p":963.0,"tp":0,"lat":19.67161065439726,"lon":75.14250192312386,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Pekalwadi","t":"Gangapur","s":"Dyaneshwar","p":404.0,"tp":0,"lat":19.681149899701406,"lon":74.87778451557821,"y":[0,2.0,2.0,2.0],"tot":6.0},{"v":"Pendapur","t":"Gangapur","s":"Pravin Chavan","p":1060.0,"tp":0,"lat":19.752382989786135,"lon":75.0189707140166,"y":[1.0,2.0,1.0,1.0],"tot":5.0},{"v":"Pimpalgaon","t":"Gangapur","s":"Janesh","p":1142.0,"tp":0,"lat":19.780293066232872,"lon":74.90215592477198,"y":[0,0,0,0],"tot":0.0},{"v":"Pimpalwadi","t":"Gangapur","s":"Pravin Chavan","p":404.0,"tp":0,"lat":19.669850939908503,"lon":75.00136766197463,"y":[1.0,0,0,0],"tot":1.0},{"v":"Pimparkheda","t":"Gangapur","s":"Balasaheb Toge","p":1093.0,"tp":0,"lat":19.609293330513307,"lon":75.03205482670448,"y":[0,0,0,1.0],"tot":1.0},{"v":"Pimpri","t":"Gangapur","s":"Dyaneshwar","p":983.0,"tp":0,"lat":19.72503841246342,"lon":75.0460078935698,"y":[4.0,0,1.0,1.0],"tot":6.0},{"v":"Potul","t":"Gangapur","s":"Janesh","p":832.0,"tp":0,"lat":19.67518041147919,"lon":74.96029615139514,"y":[0,0,2.0,0],"tot":2.0},{"v":"Pratappur","t":"Gangapur","s":"Janesh","p":1137.0,"tp":0,"lat":19.740850226095198,"lon":75.0003604699722,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Puri","t":"Gangapur","s":"Balasaheb Toge","p":1568.0,"tp":0,"lat":19.70838072670079,"lon":75.10777336131635,"y":[0,0,0,0],"tot":0.0},{"v":"Rahimpur","t":"Gangapur","s":"Balasaheb Toge","p":656.0,"tp":0,"lat":19.6484651865524,"lon":74.88741156102007,"y":[0,0,0,0],"tot":0.0},{"v":"Raipur","t":"Gangapur","s":"Janesh","p":1719.0,"tp":0,"lat":19.773584306563727,"lon":75.07965469586314,"y":[0,1.0,2.0,1.0],"tot":4.0},{"v":"Rajangaon pol","t":"Gangapur","s":"Janesh","p":753.0,"tp":0,"lat":19.732744281470147,"lon":74.99647148167342,"y":[0,0,6.0,1.0],"tot":7.0},{"v":"Rajura","t":"Gangapur","s":"Balasaheb Toge","p":824.0,"tp":0,"lat":19.554004438462364,"lon":74.98043340943939,"y":[1.0,1.0,0,1.0],"tot":3.0},{"v":"Rampuri","t":"Gangapur","s":"Dyaneshwar","p":184.0,"tp":0,"lat":19.625070087495974,"lon":74.96750181557016,"y":[0,0,0,0],"tot":0.0},{"v":"Ramrai","t":"Gangapur","s":"Balasaheb Toge","p":1002.0,"tp":0,"lat":19.71269321505388,"lon":74.94146288863242,"y":[0,0,0,2.0],"tot":2.0},{"v":"Ranjangaon SP","t":"Gangapur","s":"Balasaheb Toge","p":0,"tp":0,"lat":19.71295537613749,"lon":75.01805231863241,"y":[6.0,6.0,1.0,2.0],"tot":15.0},{"v":"Ranjangaon Narhari","t":"Gangapur","s":"Dyaneshwar","p":1728.0,"tp":0,"lat":19.769619322237862,"lon":75.01173149651805,"y":[3.0,1.0,0,1.0],"tot":5.0},{"v":"Rotasthal","t":"Gangapur","s":"Dyaneshwar","p":64.0,"tp":0,"lat":19.701916896116142,"lon":75.0083697873599,"y":[0,0,0,0],"tot":0.0},{"v":"Sanav","t":"Gangapur","s":"Janesh","p":839.0,"tp":0,"lat":19.566084535517344,"lon":74.94621087316233,"y":[0,0,0,0],"tot":0.0},{"v":"Sanjarpur","t":"Gangapur","s":"Dyaneshwar","p":730.0,"tp":0,"lat":19.678393394531106,"lon":75.13684674217826,"y":[2.0,1.0,0,1.0],"tot":4.0},{"v":"Sanjrabad","t":"Gangapur","s":"Dyaneshwar","p":112.0,"tp":0,"lat":19.695665607817975,"lon":75.14092498468031,"y":[0,0,0,0],"tot":0.0},{"v":"Sarangpur","t":"Gangapur","s":"Balasaheb Toge","p":564.0,"tp":0,"lat":19.72675072822615,"lon":74.87565903652062,"y":[0,0,0,0],"tot":0.0},{"v":"Sarifpur","t":"Gangapur","s":"Balasaheb Toge","p":706.0,"tp":0,"lat":19.770555018677634,"lon":75.10935465220658,"y":[0,1.0,0,0],"tot":1.0},{"v":"Savkheda","t":"Gangapur","s":"Balasaheb Toge","p":2333.0,"tp":0,"lat":19.742567829371144,"lon":75.09845589269919,"y":[3.0,2.0,3.0,0],"tot":8.0},{"v":"Sawangi","t":"Gangapur","s":"Janesh","p":4370.0,"tp":0,"lat":19.59516229662618,"lon":75.01413669616457,"y":[0,1.0,0,6.0],"tot":7.0},{"v":"Sayyadpur","t":"Gangapur","s":"Balasaheb Toge","p":196.0,"tp":0,"lat":19.643429367863497,"lon":74.86483716236631,"y":[0,0,0,0],"tot":0.0},{"v":"Shah Nawajpur","t":"Gangapur","s":"Unassigned","p":471.0,"tp":0,"lat":19.562497781792423,"lon":75.0507273948791,"y":[0,0,0,0],"tot":0.0},{"v":"Shahapur","t":"Gangapur","s":"Dyaneshwar","p":1757.0,"tp":0,"lat":19.66759176117322,"lon":75.0496406920861,"y":[0,0,2.0,0],"tot":2.0},{"v":"Shahapur Banjar","t":"Gangapur","s":"Dyaneshwar","p":874.0,"tp":0,"lat":19.613461783102174,"lon":75.03909901468147,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Shahapur Kadim","t":"Gangapur","s":"Dyaneshwar","p":730.0,"tp":0,"lat":19.75334575652913,"lon":75.04971024684522,"y":[0,0,0,0],"tot":0.0},{"v":"Shankarpur","t":"Gangapur","s":"Dyaneshwar","p":1004.0,"tp":0,"lat":19.715693230822964,"lon":74.89330260639449,"y":[0,1.0,0,0],"tot":1.0},{"v":"Shekta","t":"Gangapur","s":"Dyaneshwar","p":696.0,"tp":0,"lat":19.695325492698014,"lon":75.05273055538098,"y":[0,0,0,2.0],"tot":2.0},{"v":"Shendurwada","t":"Gangapur","s":"Balasaheb Toge","p":3729.0,"tp":0,"lat":19.738317462905126,"lon":74.97662572084963,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Shenpunji ranjangaon","t":"Gangapur","s":"Balasaheb Toge","p":0,"tp":0,"lat":19.748209344080365,"lon":75.02539741726598,"y":[0,0,0,0],"tot":0.0},{"v":"Shingi","t":"Gangapur","s":"Dyaneshwar","p":2121.0,"tp":0,"lat":19.681676375743336,"lon":74.89172239499003,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Shirodi","t":"Gangapur","s":"Dyaneshwar","p":609.0,"tp":0,"lat":19.66428880924189,"lon":75.11917423587529,"y":[0,0,0,0],"tot":0.0},{"v":"Shivpur","t":"Gangapur","s":"Balasaheb Toge","p":776.0,"tp":0,"lat":19.834416431633834,"lon":75.03412863256278,"y":[0,1.0,0,0],"tot":1.0},{"v":"Shivrai","t":"Gangapur","s":"Balasaheb Toge","p":1932.0,"tp":0,"lat":19.61191612153681,"lon":74.97571924390107,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Siddhanath Wadgaon","t":"Gangapur","s":"Dyaneshwar","p":2241.0,"tp":0,"lat":19.72858441791816,"lon":74.92061593316225,"y":[1.0,0,1.0,2.0],"tot":4.0},{"v":"Siddhapur","t":"Gangapur","s":"Pravin Chavan","p":881.0,"tp":0,"lat":19.829775784572494,"lon":74.96114973461225,"y":[1.0,0,1.0,1.0],"tot":3.0},{"v":"Sillegaon","t":"Gangapur","s":"Dyaneshwar","p":3326.0,"tp":0,"lat":19.719966072660792,"lon":75.10783456432237,"y":[1.0,0,1.0,3.0],"tot":5.0},{"v":"Sindhi Sirasgaon","t":"Gangapur","s":"Dyaneshwar","p":501.0,"tp":0,"lat":19.750121737656126,"lon":74.9436815843207,"y":[0,1.0,4.0,1.0],"tot":6.0},{"v":"Singpur","t":"Gangapur","s":"Unassigned","p":760.0,"tp":0,"lat":19.74444598500349,"lon":74.88398057739361,"y":[0,0,0,0],"tot":0.0},{"v":"Sirasgaon","t":"Gangapur","s":"Dyaneshwar","p":1538.0,"tp":0,"lat":19.761557405134788,"lon":74.95158979355755,"y":[1.0,1.0,1.0,0],"tot":3.0},{"v":"Siregaon","t":"Gangapur","s":"Janesh","p":1373.0,"tp":0,"lat":19.754451531688588,"lon":74.99272731657854,"y":[1.0,0,3.0,2.0],"tot":6.0},{"v":"Siresaigaon","t":"Gangapur","s":"Dyaneshwar","p":944.0,"tp":0,"lat":19.734144973975894,"lon":75.07141986475764,"y":[0,0,0,0],"tot":0.0},{"v":"Solegaon","t":"Gangapur","s":"Balasaheb Toge","p":1060.0,"tp":0,"lat":19.680135368264775,"lon":75.11364097787171,"y":[0,0,1.0,0],"tot":1.0},{"v":"Sultanabad","t":"Gangapur","s":"Janesh","p":921.0,"tp":0,"lat":19.662306274493655,"lon":75.02324509716613,"y":[0,0,0,1.0],"tot":1.0},{"v":"Sultanpur","t":"Gangapur","s":"Balasaheb Toge","p":423.0,"tp":0,"lat":19.598195197911217,"lon":74.9123654841964,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Surewadi","t":"Gangapur","s":"Unassigned","p":274.0,"tp":0,"lat":19.74039507232203,"lon":75.00306090871848,"y":[0,0,0,0],"tot":0.0},{"v":"Kadam Takli","t":"Gangapur","s":"Dyaneshwar","p":1429.0,"tp":0,"lat":19.735528826420595,"lon":74.96132552314192,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Takliwadi","t":"Gangapur","s":"Janesh","p":887.0,"tp":0,"lat":19.66481643788386,"lon":75.12813452448091,"y":[3.0,0,1.0,1.0],"tot":5.0},{"v":"Talesaman","t":"Gangapur","s":"Dyaneshwar","p":1349.0,"tp":0,"lat":19.788312089919483,"lon":75.10988541463139,"y":[0,0,0,2.0],"tot":2.0},{"v":"Talpimpri","t":"Gangapur","s":"Balasaheb Toge","p":606.0,"tp":0,"lat":19.68889954251429,"lon":75.04573475978917,"y":[1.0,0,0,0],"tot":1.0},{"v":"Tandulwadi","t":"Gangapur","s":"Balasaheb Toge","p":1408.0,"tp":0,"lat":19.599689743945973,"lon":74.92292478611252,"y":[2.0,1.0,2.0,0],"tot":5.0},{"v":"Tandulwadi","t":"Gangapur","s":"Dyaneshwar","p":768.0,"tp":0,"lat":19.599689743945973,"lon":74.92292478611252,"y":[0,0,0,0],"tot":0.0},{"v":"Tembhapuri","t":"Gangapur","s":"Balasaheb Toge","p":460.0,"tp":0,"lat":19.57747622660008,"lon":74.96404288962333,"y":[0,0,0,1.0],"tot":1.0},{"v":"Toki","t":"Gangapur","s":"Dyaneshwar","p":755.0,"tp":0,"lat":19.7259947401406,"lon":75.0095332526174,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Turkabad Kharadi","t":"Gangapur","s":"Balasaheb Toge","p":6017.0,"tp":0,"lat":19.727529848307885,"lon":75.11292793420525,"y":[2.0,0,3.0,0],"tot":5.0},{"v":"Umarpur","t":"Gangapur","s":"Unassigned","p":337.0,"tp":0,"lat":19.724251999748933,"lon":75.01421153522176,"y":[0,0,0,0],"tot":0.0},{"v":"Uttarwadi","t":"Gangapur","s":"Dyaneshwar","p":308.0,"tp":0,"lat":19.696618286210196,"lon":74.94562685605287,"y":[0,0,0,0],"tot":0.0},{"v":"Vitthalpur","t":"Gangapur","s":"Dyaneshwar","p":0,"tp":0,"lat":19.77337712376308,"lon":74.96519710552111,"y":[0,0,0,1.0],"tot":1.0},{"v":"Vairagad","t":"Gangapur","s":"Janesh","p":932.0,"tp":0,"lat":19.5818746745554,"lon":74.98825239256799,"y":[0,0,1.0,0],"tot":1.0},{"v":"Wadali","t":"Gangapur","s":"Dyaneshwar","p":964.0,"tp":0,"lat":19.593456551348666,"lon":75.10755601094891,"y":[2.0,0,2.0,3.0],"tot":7.0},{"v":"Wadgaon","t":"Gangapur","s":"Dyaneshwar","p":946.0,"tp":0,"lat":19.788596327038615,"lon":74.93172298767524,"y":[0,2.0,0,2.0],"tot":4.0},{"v":"Wahegaon","t":"Gangapur","s":"Pravin Chavan","p":4377.0,"tp":0,"lat":19.660999868052663,"lon":74.8746863447292,"y":[2.0,2.0,1.0,4.0],"tot":9.0},{"v":"Wajnapur","t":"Gangapur","s":"Dyaneshwar","p":579.0,"tp":0,"lat":19.78510837580238,"lon":75.04098575655284,"y":[0,0,6.0,0],"tot":6.0},{"v":"Waluj Kh.","t":"Gangapur","s":"Balasaheb Toge","p":2676.0,"tp":0,"lat":19.65416890902293,"lon":74.97627104004344,"y":[3.0,1.0,0,3.0],"tot":7.0},{"v":"Warkhed","t":"Gangapur","s":"Pravin Chavan","p":2712.0,"tp":0,"lat":19.737521109424524,"lon":74.92426355027165,"y":[1.0,2.0,0,2.0],"tot":5.0},{"v":"Warzadi","t":"Gangapur","s":"Janesh","p":1090.0,"tp":0,"lat":19.569933532255426,"lon":74.98914957360901,"y":[1.0,1.0,0,0],"tot":2.0},{"v":"Wasusaigaon","t":"Gangapur","s":"Janesh","p":1336.0,"tp":0,"lat":19.79899647319252,"lon":75.09525935360098,"y":[1.0,0,2.0,3.0],"tot":6.0},{"v":"Wazar","t":"Gangapur","s":"Balasaheb Toge","p":585.0,"tp":0,"lat":19.812712957313686,"lon":75.01349746791337,"y":[0,0,0,0],"tot":0.0},{"v":"Yesgaon","t":"Gangapur","s":"Dyaneshwar","p":1750.0,"tp":0,"lat":19.669622652032505,"lon":74.89496060863159,"y":[1.0,0,2.0,4.0],"tot":7.0},{"v":"Yasimpur","t":"Gangapur","s":"Balasaheb Toge","p":0,"tp":0,"lat":19.722430196228693,"lon":75.0439727453143,"y":[0,1.0,0,0],"tot":1.0},{"v":"Zanzardi","t":"Gangapur","s":"Balasaheb Toge","p":393.0,"tp":0,"lat":19.63830850617161,"lon":74.89032650345615,"y":[0,0,0,0],"tot":0.0},{"v":"Zodegaon","t":"Gangapur","s":"Dyaneshwar","p":1199.0,"tp":0,"lat":19.682441402671284,"lon":74.880853449733,"y":[1.0,0,0,0],"tot":1.0},{"v":"Adgaon","t":"Kannad","s":"Yogesh","p":2196.0,"tp":0,"lat":20.22896930881702,"lon":75.02705731450826,"y":[0,2.0,1.0,2.0],"tot":5.0},{"v":"Adgaon Jehur","t":"Kannad","s":"Swapnil","p":816.0,"tp":0,"lat":20.16450704484334,"lon":75.00149086474784,"y":[0,0,0,0],"tot":0.0},{"v":"Alapur","t":"Kannad","s":"Anil Magre","p":612.0,"tp":0,"lat":20.329413467388946,"lon":75.14205041375618,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Amba","t":"Kannad","s":"Shivdash","p":1393.0,"tp":0,"lat":20.257726851989297,"lon":75.21006508011897,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Amba Tanda","t":"Kannad","s":"Shivdash","p":1643.0,"tp":0,"lat":20.158303052434178,"lon":75.16859290454346,"y":[0,3.0,1.0,2.0],"tot":6.0},{"v":"Ambala","t":"Kannad","s":"Shivdash","p":1203.0,"tp":0,"lat":20.183023531909267,"lon":75.16991042265329,"y":[0,0,0,0],"tot":0.0},{"v":"Ambegaon Bk.","t":"Kannad","s":"Unassigned","p":105.0,"tp":0,"lat":20.18166420260885,"lon":75.10545037044375,"y":[0,0,0,0],"tot":0.0},{"v":"Ambegaon Kh.","t":"Kannad","s":"Unassigned","p":4.0,"tp":0,"lat":20.26099045000161,"lon":75.06988078312229,"y":[0,0,0,0],"tot":0.0},{"v":"Amdabad","t":"Kannad","s":"Yogesh","p":992.0,"tp":0,"lat":20.269429416212663,"lon":75.04461371859408,"y":[0,0,0,0],"tot":0.0},{"v":"Andhaner","t":"Kannad","s":"Shivdash","p":4667.0,"tp":0,"lat":20.175129466375537,"lon":75.14600389578068,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Antapur","t":"Kannad","s":"Shivdash","p":331.0,"tp":0,"lat":20.179053379087645,"lon":75.06601218857773,"y":[0,0,0,1.0],"tot":1.0},{"v":"Athegaon","t":"Kannad","s":"Anil Magre","p":934.0,"tp":0,"lat":20.268115016829007,"lon":75.05837563147962,"y":[0,0,1.0,0],"tot":1.0},{"v":"Aurala","t":"Kannad","s":"Swapnil","p":2173.0,"tp":0,"lat":20.223228871528807,"lon":75.27707699100357,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Aurali","t":"Kannad","s":"Swapnil","p":901.0,"tp":0,"lat":20.26805933101879,"lon":75.19626358172052,"y":[0,0,0,0],"tot":0.0},{"v":"Aurangpur","t":"Kannad","s":"Ankush","p":12.0,"tp":0,"lat":20.28722358121576,"lon":75.29167795956485,"y":[0,0,0,0],"tot":0.0},{"v":"Bahirgaon","t":"Kannad","s":"Anil Magre","p":2109.0,"tp":0,"lat":20.329901447567483,"lon":75.28558729167321,"y":[0,0,2.0,0],"tot":2.0},{"v":"Balkheda","t":"Kannad","s":"Yogesh","p":521.0,"tp":0,"lat":20.19476931245682,"lon":75.22983831578651,"y":[0,0,0,1.0],"tot":1.0},{"v":"Bahadurpur","t":"Kannad","s":"Unassigned","p":0,"tp":0,"lat":20.274304077784333,"lon":75.14590048119355,"y":[0,1.0,0,0],"tot":1.0},{"v":"Banshendra","t":"Kannad","s":"Swapnil","p":2675.0,"tp":0,"lat":20.40951175385838,"lon":75.11302904733544,"y":[0,4.0,10.0,8.0],"tot":22.0},{"v":"Barkatpur","t":"Kannad","s":"Ankush","p":1443.0,"tp":0,"lat":20.20895986620107,"lon":75.12490347858184,"y":[0,0,1.0,0],"tot":1.0},{"v":"Belkheda","t":"Kannad","s":"Ankush","p":809.0,"tp":0,"lat":20.231168265901758,"lon":74.97370050627816,"y":[0,0,0,1.0],"tot":1.0},{"v":"Belkheda Tanda","t":"Kannad","s":"Ankush","p":636.0,"tp":0,"lat":20.34554511492019,"lon":75.15007060586926,"y":[0,0,0,0],"tot":0.0},{"v":"Bhambarwadi","t":"Kannad","s":"Shivdash","p":1377.0,"tp":0,"lat":20.305089176875313,"lon":75.16588832924226,"y":[0,1.0,8.0,8.0],"tot":17.0},{"v":"Bharamba","t":"Kannad","s":"Ankush","p":1137.0,"tp":0,"lat":20.287726330822128,"lon":75.16882263844455,"y":[0,0,0,0],"tot":0.0},{"v":"Bharamba Tanda","t":"Kannad","s":"Ankush","p":840.0,"tp":0,"lat":20.202809319131376,"lon":75.23920975276825,"y":[0,0,0,0],"tot":0.0},{"v":"Bhildari","t":"Kannad","s":"Ankush","p":1636.0,"tp":0,"lat":20.225205110097107,"lon":75.07523190702072,"y":[0,1.0,4.0,8.0],"tot":13.0},{"v":"Bhokangaon","t":"Kannad","s":"Anil Magre","p":1457.0,"tp":0,"lat":20.295704335330143,"lon":75.25827644770627,"y":[0,1.0,2.0,1.0],"tot":4.0},{"v":"Bhopewadi","t":"Kannad","s":"Ankush","p":664.0,"tp":0,"lat":20.396333704081524,"lon":75.082634545815,"y":[0,0,0,1.0],"tot":1.0},{"v":"Bibkheda","t":"Kannad","s":"Anil Magre","p":694.0,"tp":0,"lat":20.092583722244242,"lon":75.22542710857266,"y":[0,0,0,0],"tot":0.0},{"v":"Boltek","t":"Kannad","s":"Anil Magre","p":549.0,"tp":0,"lat":20.112642031168793,"lon":75.06592991983699,"y":[0,0,0,0],"tot":0.0},{"v":"Bormal Tanda","t":"Kannad","s":"Ankush","p":761.0,"tp":0,"lat":20.41136601585175,"lon":75.12058371184992,"y":[0,0,0,0],"tot":0.0},{"v":"Borsar Bk.","t":"Kannad","s":"Swapnil","p":1282.0,"tp":0,"lat":20.37595713618626,"lon":75.2010309512517,"y":[0,4.0,2.0,2.0],"tot":8.0},{"v":"Borsar Kh.","t":"Kannad","s":"Swapnil","p":892.0,"tp":0,"lat":20.33824512160684,"lon":75.3045478608876,"y":[0,0,0,1.0],"tot":1.0},{"v":"Bramhani Garada","t":"Kannad","s":"Ankush","p":912.0,"tp":0,"lat":20.16627652611033,"lon":75.20203569776778,"y":[0,0,0,0],"tot":0.0},{"v":"Chambharwadi","t":"Kannad","s":"Anil Magre","p":886.0,"tp":0,"lat":20.23252386339381,"lon":75.18480770528242,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Chapaner","t":"Kannad","s":"Swapnil","p":3869.0,"tp":0,"lat":20.309847493543515,"lon":75.11899619325106,"y":[0,2.0,0,3.0],"tot":5.0},{"v":"Chikhalthan","t":"Kannad","s":"Anil Magre","p":5592.0,"tp":0,"lat":20.31248714007821,"lon":75.0751876185479,"y":[0,3.0,1.0,2.0],"tot":6.0},{"v":"Chimnapur","t":"Kannad","s":"Ankush","p":1722.0,"tp":0,"lat":20.121391283326737,"lon":75.07949449168524,"y":[0,0,2.0,0],"tot":2.0},{"v":"Chinchkheda Bk.","t":"Kannad","s":"Swapnil","p":761.0,"tp":0,"lat":20.292776257905533,"lon":75.04059263438022,"y":[0,0,0,2.0],"tot":2.0},{"v":"Chinchkheda bu. Tanda","t":"Kannad","s":"Swapnil","p":448.0,"tp":0,"lat":20.233806692485206,"lon":75.19892422372509,"y":[0,0,0,1.0],"tot":1.0},{"v":"Chinchkheda Kh.","t":"Kannad","s":"Swapnil","p":1236.0,"tp":0,"lat":20.336744247632172,"lon":75.20700701279794,"y":[0,1.0,0,0],"tot":1.0},{"v":"Chincholi","t":"Kannad","s":"Yogesh","p":6434.0,"tp":0,"lat":20.259778043104543,"lon":75.00369315324576,"y":[0,1.0,0,0],"tot":1.0},{"v":"Chivali","t":"Kannad","s":"Swapnil","p":784.0,"tp":0,"lat":20.355216059019764,"lon":75.2655737755974,"y":[0,0,1.0,0],"tot":1.0},{"v":"Dabhadi","t":"Kannad","s":"Anil Magre","p":1572.0,"tp":0,"lat":20.18532096482484,"lon":75.16421645243618,"y":[0,0,0,0],"tot":0.0},{"v":"Dahigaon","t":"Kannad","s":"Ankush","p":1750.0,"tp":0,"lat":20.377305117043353,"lon":75.17235492865072,"y":[0,0,0,0],"tot":0.0},{"v":"Debhegaon","t":"Kannad","s":"Swapnil","p":2072.0,"tp":0,"lat":20.23503158743972,"lon":75.03689670720254,"y":[0,0,1.0,0],"tot":1.0},{"v":"Deogaon","t":"Kannad","s":"Swapnil","p":8696.0,"tp":0,"lat":20.313993249625586,"lon":75.3035187441148,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Deolana","t":"Kannad","s":"Swapnil","p":1973.0,"tp":0,"lat":20.399182656548753,"lon":75.07044655306257,"y":[0,0,0,0],"tot":0.0},{"v":"Deoli","t":"Kannad","s":"Swapnil","p":558.0,"tp":0,"lat":20.157015738808955,"lon":75.25458146950258,"y":[0,0,0,0],"tot":0.0},{"v":"Deopudi","t":"Kannad","s":"Anil Magre","p":496.0,"tp":0,"lat":20.355338367374586,"lon":75.00480809663354,"y":[0,0,0,0],"tot":0.0},{"v":"Deopul","t":"Kannad","s":"Ankush","p":1168.0,"tp":0,"lat":20.2557212627555,"lon":75.103619978346,"y":[0,0,1.0,0],"tot":1.0},{"v":"Dhamani Kh","t":"Kannad","s":"Ankush","p":1295.0,"tp":0,"lat":20.298102354554185,"lon":75.3007668637506,"y":[0,1.0,0,0],"tot":1.0},{"v":"Dhangarwadi","t":"Kannad","s":"Yogesh","p":427.0,"tp":0,"lat":20.176189440935655,"lon":75.2728791877941,"y":[0,0,0,2.0],"tot":2.0},{"v":"Dharankheda","t":"Kannad","s":"Ankush","p":107.0,"tp":0,"lat":20.291146479765104,"lon":75.25711655004231,"y":[0,0,0,0],"tot":0.0},{"v":"Digaon","t":"Kannad","s":"Ankush","p":2041.0,"tp":0,"lat":20.387076055241252,"lon":75.113834187826,"y":[0,1.0,0,4.0],"tot":5.0},{"v":"Digar","t":"Kannad","s":"Yogesh","p":5511.0,"tp":0,"lat":20.38988505318598,"lon":75.25270743969553,"y":[0,1.0,0,0],"tot":1.0},{"v":"Dongaon","t":"Kannad","s":"Yogesh","p":698.0,"tp":0,"lat":20.15993383518126,"lon":75.1524103523329,"y":[0,0,3.0,1.0],"tot":4.0},{"v":"Dongargaon","t":"Kannad","s":"Yogesh","p":923.0,"tp":0,"lat":20.11198361512703,"lon":75.08859770424867,"y":[0,0,2.0,0],"tot":2.0},{"v":"Dudhmal","t":"Kannad","s":"Ankush","p":259.0,"tp":0,"lat":20.087478981149403,"lon":75.15894089486089,"y":[0,0,0,1.0],"tot":1.0},{"v":"Ganeshpur","t":"Kannad","s":"Yogesh","p":1565.0,"tp":0,"lat":20.24817439728964,"lon":74.9846701789966,"y":[0,4.0,1.0,2.0],"tot":7.0},{"v":"Garada Tanda","t":"Kannad","s":"Shivdash","p":3546.0,"tp":0,"lat":20.231452154256253,"lon":75.18622988663446,"y":[0,0,0,0],"tot":0.0},{"v":"Gargoti tanda","t":"Kannad","s":"Anil Magre","p":0,"tp":0,"lat":20.403017814163654,"lon":75.06268240815515,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Gaurpimpri","t":"Kannad","s":"Yogesh","p":826.0,"tp":0,"lat":20.26357353774175,"lon":75.27013364853424,"y":[0,0,0,0],"tot":0.0},{"v":"Gautala","t":"Kannad","s":"Sunil","p":42.0,"tp":0,"lat":20.227085636297364,"lon":75.22472649120168,"y":[0,0,0,0],"tot":0.0},{"v":"Gavhali","t":"Kannad","s":"Swapnil","p":1486.0,"tp":0,"lat":20.18920847509536,"lon":74.9631107558789,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Ghatshendra","t":"Kannad","s":"Yogesh","p":3919.0,"tp":0,"lat":20.306505105867682,"lon":74.9656072349091,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Ghusur","t":"Kannad","s":"Swapnil","p":441.0,"tp":0,"lat":20.29056229982046,"lon":75.13122143142822,"y":[0,0,0,0],"tot":0.0},{"v":"Ghusur Tanda","t":"Kannad","s":"Swapnil","p":759.0,"tp":0,"lat":20.20423319394828,"lon":74.96537699672005,"y":[0,0,0,0],"tot":0.0},{"v":"Gondegaon","t":"Kannad","s":"Swapnil","p":91.0,"tp":0,"lat":20.225796281119973,"lon":74.97270105946443,"y":[0,0,0,0],"tot":0.0},{"v":"Gudma","t":"Kannad","s":"Shivdash","p":1025.0,"tp":0,"lat":20.27781337863844,"lon":75.240822526123,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Haraswadi","t":"Kannad","s":"Ankush","p":1389.0,"tp":0,"lat":20.262968983443468,"lon":75.18306733586327,"y":[0,4.0,0,3.0],"tot":7.0},{"v":"Hasanabad","t":"Kannad","s":"Ankush","p":182.0,"tp":0,"lat":20.214675215731813,"lon":75.29610036531452,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Hasankheda","t":"Kannad","s":"Anil Magre","p":845.0,"tp":0,"lat":20.4165980972402,"lon":75.08337332335276,"y":[0,0,1.0,0],"tot":1.0},{"v":"Hasta","t":"Kannad","s":"Sunil","p":1767.0,"tp":0,"lat":20.14393962166755,"lon":75.18684052973126,"y":[0,6.0,3.0,5.0],"tot":14.0},{"v":"Hatnoor","t":"Kannad","s":"Anil Magre","p":5418.0,"tp":0,"lat":20.330634755812092,"lon":75.15231753149844,"y":[0,2.0,2.0,3.0],"tot":7.0},{"v":"Hiverkheda Tanda","t":"Kannad","s":"Anil Magre","p":1175.0,"tp":0,"lat":20.120770677092583,"lon":75.17834084335615,"y":[0,0,3.0,0],"tot":3.0},{"v":"Hiwarkheda","t":"Kannad","s":"Sunil","p":548.0,"tp":0,"lat":20.375602611286237,"lon":75.17247386848283,"y":[0,6.0,0,2.0],"tot":8.0},{"v":"Jaitapur","t":"Kannad","s":"Anil Magre","p":1795.0,"tp":0,"lat":20.09445857559505,"lon":75.04268100630789,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Jaitkheda","t":"Kannad","s":"Anil Magre","p":1350.0,"tp":0,"lat":20.27598450944022,"lon":75.32176649378958,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Jaitkheda Tanda","t":"Kannad","s":"Anil Magre","p":843.0,"tp":0,"lat":20.125566354381295,"lon":75.14536509860208,"y":[0,1.0,0,0],"tot":1.0},{"v":"Jalgaonghat","t":"Kannad","s":"Swapnil","p":1837.0,"tp":0,"lat":20.29868147929764,"lon":75.02379339971507,"y":[0,0,0,1.0],"tot":1.0},{"v":"Jamdi Ghat","t":"Kannad","s":"Swapnil","p":728.0,"tp":0,"lat":20.228660554259424,"lon":75.01459830427794,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Jamdi Jhangir","t":"Kannad","s":"Ankush","p":302.0,"tp":0,"lat":20.259997373086016,"lon":75.16731166226363,"y":[0,0,0,1.0],"tot":1.0},{"v":"Jamdi forest","t":"Kannad","s":"Shivdash","p":2759.0,"tp":0,"lat":20.303868538881748,"lon":75.10261045514152,"y":[0,0,0,1.0],"tot":1.0},{"v":"Jawakheda Bk.","t":"Kannad","s":"Yogesh","p":1531.0,"tp":0,"lat":20.340081003478033,"lon":74.99680570212429,"y":[0,0,0,2.0],"tot":2.0},{"v":"Jawakheda Kh.","t":"Kannad","s":"Yogesh","p":858.0,"tp":0,"lat":20.212047698732338,"lon":75.08495643615318,"y":[0,0,0,0],"tot":0.0},{"v":"Jawali Bk.","t":"Kannad","s":"Yogesh","p":692.0,"tp":0,"lat":20.380684604188396,"lon":75.24404097958086,"y":[0,0,0,0],"tot":0.0},{"v":"Jawali Kh.","t":"Kannad","s":"Yogesh","p":809.0,"tp":0,"lat":20.11577084971066,"lon":75.27035567384489,"y":[0,0,0,1.0],"tot":1.0},{"v":"Jehur","t":"Kannad","s":"Swapnil","p":2558.0,"tp":0,"lat":20.330125722976547,"lon":75.10579413928266,"y":[0,0,3.0,1.0],"tot":4.0},{"v":"Jehur Tanda","t":"Kannad","s":"Swapnil","p":1112.0,"tp":0,"lat":20.31464487995423,"lon":75.0817415761554,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Kadarpur","t":"Kannad","s":"Ankush","p":276.0,"tp":0,"lat":20.31448436647434,"lon":75.30619887876549,"y":[0,0,0,0],"tot":0.0},{"v":"Kalanki","t":"Kannad","s":"Shivdash","p":1619.0,"tp":0,"lat":20.15400997466523,"lon":75.171664694536,"y":[0,0,0,0],"tot":0.0},{"v":"Kanadgaon","t":"Kannad","s":"Anil Magre","p":864.0,"tp":0,"lat":20.345601262862925,"lon":75.17308616963922,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kannad","t":"Kannad","s":"Sunil","p":0,"tp":0,"lat":20.2481,"lon":75.1428,"y":[0,5.0,4.0,5.0],"tot":14.0},{"v":"Kanadgaon Werul","t":"Kannad","s":"Unassigned","p":394.0,"tp":0,"lat":20.330556833488593,"lon":75.20938314170967,"y":[0,0,0,0],"tot":0.0},{"v":"Karanjkheda Jahagir","t":"Kannad","s":"Yogesh","p":3493.0,"tp":0,"lat":20.298731765476887,"lon":75.10482992826418,"y":[0,4.0,9.0,5.0],"tot":18.0},{"v":"Karanjkheda Khalsa","t":"Kannad","s":"Yogesh","p":5146.0,"tp":0,"lat":20.23928747454157,"lon":75.2403241463447,"y":[0,0,0,0],"tot":0.0},{"v":"Kavitkheda","t":"Kannad","s":"Anil Magre","p":353.0,"tp":0,"lat":20.40396260910368,"lon":75.18410801554381,"y":[0,0,1.0,0],"tot":1.0},{"v":"Kesapur","t":"Kannad","s":"Anil Magre","p":508.0,"tp":0,"lat":20.0890180959029,"lon":75.1409472749317,"y":[0,0,2.0,0],"tot":2.0},{"v":"Khamgaon","t":"Kannad","s":"Anil Magre","p":1340.0,"tp":0,"lat":20.179471137563173,"lon":74.97585329463601,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Khaparkheda","t":"Kannad","s":"Ankush","p":651.0,"tp":0,"lat":20.24595309860461,"lon":75.04500072543618,"y":[0,0,1.0,0],"tot":1.0},{"v":"Khatkheda","t":"Kannad","s":"Ankush","p":1583.0,"tp":0,"lat":20.154446895316255,"lon":74.99278899268322,"y":[0,0,0,0],"tot":0.0},{"v":"Kheda","t":"Kannad","s":"Ankush","p":757.0,"tp":0,"lat":20.264797480524976,"lon":75.04865976288292,"y":[0,0,0,0],"tot":0.0},{"v":"Khedi","t":"Kannad","s":"Sunil","p":875.0,"tp":0,"lat":20.222278962157297,"lon":75.20601881844368,"y":[0,1.0,0,3.0],"tot":4.0},{"v":"Kholapur","t":"Kannad","s":"Ankush","p":375.0,"tp":0,"lat":20.259537592694535,"lon":74.98304947691982,"y":[0,0,0,0],"tot":0.0},{"v":"Kolambi Majra","t":"Kannad","s":"Yogesh","p":855.0,"tp":0,"lat":20.227444832233303,"lon":75.29310325029522,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kolambi Makta","t":"Kannad","s":"Yogesh","p":441.0,"tp":0,"lat":20.357460598976086,"lon":75.14192888834961,"y":[0,0,0,0],"tot":0.0},{"v":"Kolwadi","t":"Kannad","s":"Shivdash","p":1863.0,"tp":0,"lat":20.083215876053202,"lon":75.12638631575474,"y":[0,8.0,14.0,11.0],"tot":33.0},{"v":"Kondbari","t":"Kannad","s":"Shivdash","p":46.0,"tp":0,"lat":20.258367853435576,"lon":75.27744455923363,"y":[0,0,0,0],"tot":0.0},{"v":"Koparwel","t":"Kannad","s":"Shivdash","p":212.0,"tp":0,"lat":20.29241306753772,"lon":75.05492579718475,"y":[0,0,0,0],"tot":0.0},{"v":"Kunjkheda","t":"Kannad","s":"Anil Magre","p":6095.0,"tp":0,"lat":20.17808536726154,"lon":75.2652799430479,"y":[0,0,0,0],"tot":0.0},{"v":"Lamangaon","t":"Kannad","s":"Anil Magre","p":872.0,"tp":0,"lat":20.308014684923062,"lon":75.28814819906287,"y":[0,0,1.0,0],"tot":1.0},{"v":"Langada Tanda","t":"Kannad","s":"Shivdash","p":758.0,"tp":0,"lat":20.351895314042125,"lon":75.05087753114148,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Takli Lavhali","t":"Kannad","s":"Swapnil","p":229.0,"tp":0,"lat":20.37315838811174,"lon":75.0730500088955,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Lohagaon","t":"Kannad","s":"Ankush","p":1883.0,"tp":0,"lat":20.24409676259654,"lon":75.23759867700507,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Lonza","t":"Kannad","s":"Unassigned","p":229.0,"tp":0,"lat":20.17938376351509,"lon":74.985146506264,"y":[0,0,0,0],"tot":0.0},{"v":"Makranpur","t":"Kannad","s":"Sunil","p":2771.0,"tp":0,"lat":20.35458732881977,"lon":75.04637396557449,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Malegaon","t":"Kannad","s":"Ankush","p":293.0,"tp":0,"lat":20.183169514832784,"lon":75.1258905595281,"y":[0,0,0,0],"tot":0.0},{"v":"Malpur","t":"Kannad","s":"Ankush","p":194.0,"tp":0,"lat":20.15392737898652,"lon":75.00874753153902,"y":[0,0,0,0],"tot":0.0},{"v":"Maliwada","t":"Kannad","s":"Sunil","p":0,"tp":0,"lat":20.260086182391348,"lon":75.28398134760654,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Mategaon","t":"Kannad","s":"Anil Magre","p":1421.0,"tp":0,"lat":20.384086239156378,"lon":75.17100371496224,"y":[0,2.0,1.0,1.0],"tot":4.0},{"v":"Mehagaon","t":"Kannad","s":"Sunil","p":1476.0,"tp":0,"lat":20.22798296159591,"lon":75.08747995153979,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Mehun Puranwadi","t":"Kannad","s":"Ankush","p":562.0,"tp":0,"lat":20.2653571052033,"lon":75.06407458525693,"y":[0,0,0,0],"tot":0.0},{"v":"Mohadi","t":"Kannad","s":"Ankush","p":658.0,"tp":0,"lat":20.279011733554615,"lon":74.97771755342986,"y":[0,0,0,0],"tot":0.0},{"v":"Mohara","t":"Kannad","s":"Yogesh","p":1871.0,"tp":0,"lat":20.211510993165042,"lon":75.30086357822813,"y":[0,0,1.0,0],"tot":1.0},{"v":"Moharda","t":"Kannad","s":"Shivdash","p":1215.0,"tp":0,"lat":20.11927964619382,"lon":75.1828241216295,"y":[0,1.0,3.0,2.0],"tot":6.0},{"v":"Mundwadi","t":"Kannad","s":"Shivdash","p":1951.0,"tp":0,"lat":20.150537434283127,"lon":75.17672788227178,"y":[0,0,4.0,2.0],"tot":6.0},{"v":"Mundwadi Tanda","t":"Kannad","s":"Shivdash","p":971.0,"tp":0,"lat":20.360933116574568,"lon":75.1235753414256,"y":[0,0,0,0],"tot":0.0},{"v":"Mungsapur","t":"Kannad","s":"Swapnil","p":465.0,"tp":0,"lat":20.118382442170123,"lon":75.15330522034915,"y":[0,0,0,0],"tot":0.0},{"v":"Nachanwel","t":"Kannad","s":"Yogesh","p":2848.0,"tp":0,"lat":20.235844864829858,"lon":75.04301426972285,"y":[0,1.0,4.0,0],"tot":5.0},{"v":"Nadarpur","t":"Kannad","s":"Yogesh","p":1976.0,"tp":0,"lat":20.390878362516602,"lon":75.1309143800443,"y":[0,0,1.0,0],"tot":1.0},{"v":"Nagad","t":"Kannad","s":"Ankush","p":4519.0,"tp":0,"lat":20.249551598169603,"lon":75.04392262551676,"y":[0,0,0,1.0],"tot":1.0},{"v":"Nagad Tanda","t":"Kannad","s":"Ankush","p":961.0,"tp":0,"lat":20.361480592157655,"lon":75.00222194393962,"y":[0,0,1.0,0],"tot":1.0},{"v":"Nagapur","t":"Kannad","s":"Yogesh","p":3853.0,"tp":0,"lat":20.322625517828335,"lon":75.22222655260022,"y":[0,0,0,2.0],"tot":2.0},{"v":"Nandgirwadi","t":"Kannad","s":"Anil Magre","p":560.0,"tp":0,"lat":20.243620717090693,"lon":75.01481445108008,"y":[0,0,0,0],"tot":0.0},{"v":"Narsingpur","t":"Kannad","s":"Sunil","p":1025.0,"tp":0,"lat":20.38806105388462,"lon":75.07119552841064,"y":[0,0,0,0],"tot":0.0},{"v":"Navadi","t":"Kannad","s":"Shivdash","p":1181.0,"tp":0,"lat":20.192188257416515,"lon":75.00839350849482,"y":[0,0,0,0],"tot":0.0},{"v":"Newpur Jahangir","t":"Kannad","s":"Yogesh","p":1277.0,"tp":0,"lat":20.160684469958596,"lon":75.24628075680342,"y":[0,0,3.0,3.0],"tot":6.0},{"v":"Newpur Khalsa","t":"Kannad","s":"Yogesh","p":1316.0,"tp":0,"lat":20.15974869692051,"lon":75.28164773813077,"y":[0,0,0,0],"tot":0.0},{"v":"Nimbhora","t":"Kannad","s":"Yogesh","p":3059.0,"tp":0,"lat":20.08703500456005,"lon":75.06730880946787,"y":[0,2.0,4.0,13.0],"tot":19.0},{"v":"Nimdongri","t":"Kannad","s":"Anil Magre","p":1446.0,"tp":0,"lat":20.11637108703319,"lon":75.1923854529421,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Nipani","t":"Kannad","s":"Anil Magre","p":933.0,"tp":0,"lat":20.284401282263747,"lon":75.24019345609591,"y":[0,0,0,0],"tot":0.0},{"v":"Palasgaon","t":"Kannad","s":"Swapnil","p":257.0,"tp":0,"lat":20.14281511723627,"lon":75.21296576756373,"y":[0,0,1.0,0],"tot":1.0},{"v":"Palashi Kh","t":"Kannad","s":"Yogesh","p":1241.0,"tp":0,"lat":20.31360080380588,"lon":75.31892600068464,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Palaskheda","t":"Kannad","s":"Swapnil","p":776.0,"tp":0,"lat":20.19419246713099,"lon":75.01144439610323,"y":[0,1.0,0,0],"tot":1.0},{"v":"Palshi Bk.","t":"Kannad","s":"Swapnil","p":1935.0,"tp":0,"lat":20.172997366081344,"lon":75.0297099553433,"y":[0,0,0,4.0],"tot":4.0},{"v":"Pangara Tanda","t":"Kannad","s":"Ankush","p":429.0,"tp":0,"lat":20.351290410791176,"lon":75.20248153175767,"y":[0,0,0,0],"tot":0.0},{"v":"Pangra","t":"Kannad","s":"Ankush","p":674.0,"tp":0,"lat":20.17726618059005,"lon":75.0868269865162,"y":[0,0,0,1.0],"tot":1.0},{"v":"Pedakwadi","t":"Kannad","s":"Swapnil","p":151.0,"tp":0,"lat":20.23570865523569,"lon":75.25461221523685,"y":[0,0,0,1.0],"tot":1.0},{"v":"Pimparkheda","t":"Kannad","s":"Yogesh","p":2373.0,"tp":0,"lat":20.38396680354168,"lon":75.21556070551587,"y":[0,0,0,0],"tot":0.0},{"v":"Pishor","t":"Kannad","s":"Yogesh","p":4444.0,"tp":0,"lat":20.294456078007148,"lon":75.11501310793055,"y":[0,0,0,1.0],"tot":1.0},{"v":"Raigaon","t":"Kannad","s":"Ankush","p":1001.0,"tp":0,"lat":20.376117094003614,"lon":75.06300270755841,"y":[0,0,0,0],"tot":0.0},{"v":"Rail Navadi","t":"Kannad","s":"Shivdash","p":4611.0,"tp":0,"lat":20.38618408824437,"lon":75.17900341341425,"y":[0,0,0,4.0],"tot":4.0},{"v":"Ramnagar","t":"Kannad","s":"Ankush","p":1666.0,"tp":0,"lat":20.202572634800745,"lon":75.00809196915934,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Rampurwadi","t":"Kannad","s":"Ankush","p":1052.0,"tp":0,"lat":20.171973307563412,"lon":75.27678709687612,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Rewoolgaon","t":"Kannad","s":"Yogesh","p":1027.0,"tp":0,"lat":20.25167715208304,"lon":74.96007315820513,"y":[0,1.0,2.0,2.0],"tot":5.0},{"v":"Rithi","t":"Kannad","s":"Anil Magre","p":1415.0,"tp":0,"lat":20.075487650191512,"lon":75.09096452936095,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Rohila Kh.","t":"Kannad","s":"Swapnil","p":866.0,"tp":0,"lat":20.27617470557317,"lon":75.31732219204086,"y":[0,0,0,0],"tot":0.0},{"v":"Rojwepur","t":"Kannad","s":"Swapnil","p":585.0,"tp":0,"lat":20.104131107469993,"lon":75.15934648928287,"y":[0,0,0,0],"tot":0.0},{"v":"Ruikheda","t":"Kannad","s":"Swapnil","p":883.0,"tp":0,"lat":20.31161877173112,"lon":74.9837861823298,"y":[0,1.0,3.0,0],"tot":4.0},{"v":"Sahangaon","t":"Kannad","s":"Swapnil","p":437.0,"tp":0,"lat":20.245534440278043,"lon":75.18899078524994,"y":[0,0,0,0],"tot":0.0},{"v":"Saigavhan","t":"Kannad","s":"Ankush","p":2533.0,"tp":0,"lat":20.291055777728417,"lon":75.29151559433444,"y":[0,8.0,2.0,7.0],"tot":17.0},{"v":"Sakharwel","t":"Kannad","s":"Sunil","p":841.0,"tp":0,"lat":20.423010785032655,"lon":75.11407396080526,"y":[0,0,0,0],"tot":0.0},{"v":"Salegaon","t":"Kannad","s":"Swapnil","p":299.0,"tp":0,"lat":20.33414814834532,"lon":75.11191525469923,"y":[0,0,0,1.0],"tot":1.0},{"v":"Sarola","t":"Kannad","s":"Yogesh","p":2285.0,"tp":0,"lat":20.110085358450135,"lon":75.21793230500816,"y":[0,4.0,3.0,4.0],"tot":11.0},{"v":"Sasegaon","t":"Kannad","s":"Swapnil","p":1952.0,"tp":0,"lat":20.14860461329857,"lon":75.10964589698891,"y":[0,1.0,0,4.0],"tot":5.0},{"v":"Satkund Tanda","t":"Kannad","s":"Swapnil","p":1291.0,"tp":0,"lat":20.199447128012682,"lon":75.05670110720341,"y":[0,0,0,0],"tot":0.0},{"v":"Sawargaon","t":"Kannad","s":"Ankush","p":1639.0,"tp":0,"lat":20.148667091971145,"lon":75.13484534681847,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Shafepur PISHOR","t":"Kannad","s":"Yogesh","p":8303.0,"tp":0,"lat":20.29933454469864,"lon":75.03382438391301,"y":[0,0,0,1.0],"tot":1.0},{"v":"Shelgaon","t":"Kannad","s":"Yogesh","p":1393.0,"tp":0,"lat":20.13560621002868,"lon":75.05480954669837,"y":[0,0,0,1.0],"tot":1.0},{"v":"Shevata","t":"Kannad","s":"Ankush","p":432.0,"tp":0,"lat":20.233680947456754,"lon":75.23241236219019,"y":[0,0,0,1.0],"tot":1.0},{"v":"Shibghat","t":"Kannad","s":"Ankush","p":796.0,"tp":0,"lat":20.133923714566446,"lon":75.0225677171963,"y":[0,0,0,0],"tot":0.0},{"v":"Shirasgaon","t":"Kannad","s":"Swapnil","p":1838.0,"tp":0,"lat":20.391344452191593,"lon":75.0743137575539,"y":[0,1.0,5.0,2.0],"tot":8.0},{"v":"Shirodi","t":"Kannad","s":"Swapnil","p":1492.0,"tp":0,"lat":20.315712906473422,"lon":74.99668788842389,"y":[0,0,1.0,0],"tot":1.0},{"v":"Shiv Tanda","t":"Kannad","s":"Swapnil","p":360.0,"tp":0,"lat":20.397841448996633,"lon":75.08361531931587,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Shivrai","t":"Kannad","s":"Anil Magre","p":1821.0,"tp":0,"lat":20.23419804560879,"lon":75.15227422685795,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Sirjapur","t":"Kannad","s":"Swapnil","p":548.0,"tp":0,"lat":20.341296944322085,"lon":75.05699797666641,"y":[0,0,1.0,4.0],"tot":5.0},{"v":"Sitanaik Tanda","t":"Kannad","s":"Swapnil","p":1521.0,"tp":0,"lat":20.207400395785815,"lon":75.27035369142712,"y":[0,3.0,2.0,5.0],"tot":10.0},{"v":"Sonwadi","t":"Kannad","s":"Swapnil","p":677.0,"tp":0,"lat":20.192632316524538,"lon":74.97394076200796,"y":[0,0,0,1.0],"tot":1.0},{"v":"Tad Pimpalgaon","t":"Kannad","s":"Anil Magre","p":4332.0,"tp":0,"lat":20.324937468167036,"lon":75.21870759368532,"y":[0,2.0,0,2.0],"tot":4.0},{"v":"Takli Antur","t":"Kannad","s":"Yogesh","p":2514.0,"tp":0,"lat":20.37760090774758,"lon":75.10693090329659,"y":[0,4.0,4.0,0],"tot":8.0},{"v":"Takli Bk.","t":"Kannad","s":"Swapnil","p":1287.0,"tp":0,"lat":20.25411649546369,"lon":75.03349855708564,"y":[0,0,0,0],"tot":0.0},{"v":"Talner","t":"Kannad","s":"Ankush","p":475.0,"tp":0,"lat":20.173958103791716,"lon":75.15286953707633,"y":[0,0,0,0],"tot":0.0},{"v":"Tandulwadi","t":"Kannad","s":"Ankush","p":1030.0,"tp":0,"lat":20.217164061862512,"lon":75.02818017152276,"y":[0,0,0,0],"tot":0.0},{"v":"Tapargaon","t":"Kannad","s":"Anil Magre","p":1076.0,"tp":0,"lat":20.09898961424968,"lon":75.05392661275893,"y":[0,0,0,0],"tot":0.0},{"v":"Tapowan","t":"Kannad","s":"Ankush","p":1009.0,"tp":0,"lat":20.3774642690641,"lon":75.14498487056632,"y":[0,2.0,0,0],"tot":2.0},{"v":"Telwadi","t":"Kannad","s":"Ankush","p":946.0,"tp":0,"lat":20.14889521015865,"lon":75.21838325313429,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Thakarwadi","t":"Kannad","s":"Swapnil","p":0,"tp":0,"lat":20.40381077857784,"lon":75.22842857567069,"y":[0,0,0,1.0],"tot":1.0},{"v":"Tikram Tanda","t":"Kannad","s":"Swapnil","p":0,"tp":0,"lat":20.1173674011644,"lon":75.10890234389443,"y":[0,0,0,1.0],"tot":1.0},{"v":"Umbarkheda","t":"Kannad","s":"Sunil","p":1630.0,"tp":0,"lat":20.28610374824535,"lon":75.01026672666599,"y":[0,1.0,5.0,8.0],"tot":14.0},{"v":"Umberkheda Tanda","t":"Kannad","s":"Sunil","p":450.0,"tp":0,"lat":20.169781094016603,"lon":75.21252268474412,"y":[0,0,0,0],"tot":0.0},{"v":"Upla","t":"Kannad","s":"Swapnil","p":1368.0,"tp":0,"lat":20.24600375458316,"lon":75.04636695350275,"y":[0,0,2.0,3.0],"tot":5.0},{"v":"Vaispur","t":"Kannad","s":"Ankush","p":453.0,"tp":0,"lat":20.232385184538757,"lon":75.06868860061077,"y":[0,1.0,0,0],"tot":1.0},{"v":"Vita","t":"Kannad","s":"Swapnil","p":2004.0,"tp":0,"lat":20.13226320848046,"lon":75.2123379910907,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Vitkheda","t":"Kannad","s":"Swapnil","p":1284.0,"tp":0,"lat":20.16212103094687,"lon":75.08574037693784,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Vitthalpur","t":"Kannad","s":"Anil Magre","p":498.0,"tp":0,"lat":20.181299115274143,"lon":75.00304693329245,"y":[0,0,0,0],"tot":0.0},{"v":"Wadali","t":"Kannad","s":"Anil Magre","p":1588.0,"tp":0,"lat":20.08251629685832,"lon":75.17365047702603,"y":[0,0,0,0],"tot":0.0},{"v":"Wadgaon","t":"Kannad","s":"Anil Magre","p":900.0,"tp":0,"lat":20.33015768208257,"lon":75.1949394907105,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Wadhod","t":"Kannad","s":"Ankush","p":1399.0,"tp":0,"lat":20.2357823805395,"lon":75.04460100508507,"y":[0,0,3.0,1.0],"tot":4.0},{"v":"Wadichimnapur","t":"Kannad","s":"Ankush","p":135.0,"tp":0,"lat":20.2867887147753,"lon":75.14899192359225,"y":[0,0,0,0],"tot":0.0},{"v":"Wadner","t":"Kannad","s":"Shivdash","p":1170.0,"tp":0,"lat":20.21338453997384,"lon":75.0454027701362,"y":[0,1.0,0,9.0],"tot":10.0},{"v":"Wadner Tanda","t":"Kannad","s":"Shivdash","p":2251.0,"tp":0,"lat":20.377160149087892,"lon":75.1453748251913,"y":[0,0,0,1.0],"tot":1.0},{"v":"Waghul Kheda","t":"Kannad","s":"Swapnil","p":479.0,"tp":0,"lat":20.348196308942782,"lon":75.0976151946012,"y":[0,0,0,0],"tot":0.0},{"v":"Wakad","t":"Kannad","s":"Swapnil","p":2692.0,"tp":0,"lat":20.093317346803154,"lon":75.12751180948801,"y":[0,0,4.0,0],"tot":4.0},{"v":"Waki Kadim","t":"Kannad","s":"Ankush","p":1381.0,"tp":0,"lat":20.268454175309188,"lon":75.33122577897707,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Wasadi","t":"Kannad","s":"Sunil","p":2975.0,"tp":0,"lat":20.283753590025793,"lon":75.07428428891961,"y":[0,2.0,2.0,5.0],"tot":9.0},{"v":"Abdullapur","t":"Khuldabad","s":"Ganesh Mate","p":935.0,"tp":7.0,"lat":20.006989944904834,"lon":75.18858137393192,"y":[0,0,0,0],"tot":0.0},{"v":"Akhatwada","t":"Khuldabad","s":"Ganesh Mate","p":1523.0,"tp":15.0,"lat":19.981770755716195,"lon":75.24920272876041,"y":[0,0,1.0,0],"tot":1.0},{"v":"Azampur","t":"Khuldabad","s":"Ganesh Mate","p":328.0,"tp":8.0,"lat":19.910526993194985,"lon":75.23863338435231,"y":[0,0,0,1.0],"tot":1.0},{"v":"Bazar Sawangi","t":"Khuldabad","s":"Ankush","p":4461.0,"tp":150.0,"lat":20.03855994209292,"lon":75.2747857282049,"y":[0,1.0,0,0],"tot":1.0},{"v":"Bhandegaon","t":"Khuldabad","s":"Ankush","p":1027.0,"tp":25.0,"lat":20.00085365319274,"lon":75.19515136053502,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Bhataji","t":"Khuldabad","s":"Ganesh Mate","p":1568.0,"tp":25.0,"lat":20.005544863969728,"lon":75.22140156291314,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Bodkha","t":"Khuldabad","s":"Ankush","p":2013.0,"tp":25.0,"lat":20.029028522083745,"lon":75.24871444977504,"y":[0,0,0,0],"tot":0.0},{"v":"Borsar","t":"Kannad","s":"Unassigned","p":0,"tp":0,"lat":20.3833779538068,"lon":75.1648497442998,"y":[0,0,0,1.0],"tot":1.0},{"v":"Borwadi","t":"Khuldabad","s":"Mahesh Jadhav","p":297.0,"tp":10.0,"lat":19.912761140958068,"lon":75.24997315258238,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Chincholi","t":"Khuldabad","s":"Ganesh Mate","p":1393.0,"tp":30.0,"lat":20.039075067892462,"lon":75.09389978214546,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Daregaon","t":"Khuldabad","s":"Ankush","p":2826.0,"tp":60.0,"lat":19.94784188003065,"lon":75.2293352479142,"y":[0,0,1.0,3.0],"tot":4.0},{"v":"Deolana Bk","t":"Khuldabad","s":"Ankush","p":1089.0,"tp":20.0,"lat":20.1067690713371,"lon":75.22729326784693,"y":[0,0,1.0,5.0],"tot":6.0},{"v":"Dhamangaon","t":"Khuldabad","s":"Ankush","p":1603.0,"tp":40.0,"lat":19.95823468249698,"lon":75.21544422518959,"y":[0,0,0,1.0],"tot":1.0},{"v":"Gadana","t":"Khuldabad","s":"Ankush","p":2688.0,"tp":50.0,"lat":20.08307723712524,"lon":75.14172350045182,"y":[0,0,1.0,0],"tot":1.0},{"v":"Galleborgaon","t":"Khuldabad","s":"Ganesh Mate","p":3729.0,"tp":40.0,"lat":20.100697136650037,"lon":75.244377167225,"y":[0,7.0,5.0,4.0],"tot":16.0},{"v":"Gandheshwar","t":"Khuldabad","s":"Ankush","p":587.0,"tp":15.0,"lat":19.921949356424893,"lon":75.1857143164301,"y":[0,0,0,0],"tot":0.0},{"v":"Ghodegaon","t":"Khuldabad","s":"Mahesh Jadhav","p":1615.0,"tp":25.0,"lat":20.081965514486594,"lon":75.1365640688222,"y":[0,0,2.0,4.0],"tot":6.0},{"v":"Golegaon","t":"Khuldabad","s":"Mahesh Jadhav","p":2459.0,"tp":20.0,"lat":19.98251805117842,"lon":75.13235516829033,"y":[0,0,0,2.0],"tot":2.0},{"v":"Indapur","t":"Khuldabad","s":"Ankush","p":642.0,"tp":6.0,"lat":20.0112534663932,"lon":75.15614046771857,"y":[0,0,0,0],"tot":0.0},{"v":"Jafarwadi","t":"Khuldabad","s":"Mahesh Jadhav","p":420.0,"tp":5.0,"lat":19.998353768701648,"lon":75.14761522724488,"y":[0,0,0,0],"tot":0.0},{"v":"Kagjipura","t":"Khuldabad","s":"Ganesh Mate","p":1382.0,"tp":15.0,"lat":20.083549100816164,"lon":75.15367450499626,"y":[0,0,0,0],"tot":0.0},{"v":"Kanadgaon","t":"Khuldabad","s":"Ankush","p":1158.0,"tp":50.0,"lat":20.014922296143563,"lon":75.277165681647,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Kanakshil","t":"Khuldabad","s":"Ankush","p":1302.0,"tp":60.0,"lat":20.000428838832157,"lon":75.16397898351178,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kasabkheda","t":"Khuldabad","s":"Ganesh Mate","p":4874.0,"tp":40.0,"lat":20.03391570782256,"lon":75.12600884519509,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Kautgaon","t":"Khuldabad","s":"Ganesh Mate","p":329.0,"tp":2.0,"lat":20.040522838442183,"lon":75.17928798425204,"y":[0,0,0,0],"tot":0.0},{"v":"Khandi Pimpalgaon","t":"Khuldabad","s":"Ankush","p":1903.0,"tp":25.0,"lat":20.03387741189299,"lon":75.15094012096405,"y":[0,0,0,2.0],"tot":2.0},{"v":"Khirdi","t":"Khuldabad","s":"Mahesh Jadhav","p":2094.0,"tp":25.0,"lat":20.100531401256195,"lon":75.17982509683783,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Khuldabad","t":"Khuldabad","s":"Mahesh Jadhav","p":0,"tp":0,"lat":20.0036,"lon":75.1944,"y":[0,1.0,2.0,2.0],"tot":5.0},{"v":"Lamangaon","t":"Khuldabad","s":"Ganesh Mate","p":1068.0,"tp":25.0,"lat":20.072300755658993,"lon":75.28066133708928,"y":[0,0,0,1.0],"tot":1.0},{"v":"Loni","t":"Khuldabad","s":"Ankush","p":2119.0,"tp":50.0,"lat":20.021287760120135,"lon":75.11236320599987,"y":[0,0,0,5.0],"tot":5.0},{"v":"Malkapur","t":"Khuldabad","s":"Ganesh Mate","p":873.0,"tp":10.0,"lat":20.099408020209307,"lon":75.2347118231315,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Mambapur","t":"Khuldabad","s":"Ganesh Mate","p":336.0,"tp":7.0,"lat":20.01897542095588,"lon":75.18505902899791,"y":[0,0,0,0],"tot":0.0},{"v":"Mamnapur","t":"Khuldabad","s":"Mahesh Jadhav","p":1074.0,"tp":20.0,"lat":20.007509657614488,"lon":75.1723116839822,"y":[0,0,1.0,0],"tot":1.0},{"v":"Mamurabad","t":"Khuldabad","s":"Ankush","p":584.0,"tp":10.0,"lat":20.05828402820779,"lon":75.26403227947404,"y":[0,0,0,0],"tot":0.0},{"v":"Matargaon","t":"Khuldabad","s":"Ankush","p":575.0,"tp":20.0,"lat":20.094753896256382,"lon":75.19760070775999,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Mawsala","t":"Khuldabad","s":"Ganesh Mate","p":1069.0,"tp":10.0,"lat":20.01589613490002,"lon":75.23497744699458,"y":[0,0,0,0],"tot":0.0},{"v":"Mhaismal","t":"Khuldabad","s":"Ganesh Mate","p":628.0,"tp":4.0,"lat":19.99611492482158,"lon":75.25405578296947,"y":[0,0,0,0],"tot":0.0},{"v":"Nandrabad","t":"Khuldabad","s":"Ganesh Mate","p":705.0,"tp":10.0,"lat":20.065014084449405,"lon":75.14985071221153,"y":[0,0,0,0],"tot":0.0},{"v":"Nirgudi Bk","t":"Khuldabad","s":"Ganesh Mate","p":1716.0,"tp":25.0,"lat":19.950631610385596,"lon":75.23869166176016,"y":[0,0,0,0],"tot":0.0},{"v":"Padli","t":"Khuldabad","s":"Ankush","p":1786.0,"tp":30.0,"lat":19.983033565054075,"lon":75.14406344905906,"y":[0,2.0,2.0,1.0],"tot":5.0},{"v":"Palasgaon","t":"Khuldabad","s":"Ganesh Mate","p":1239.0,"tp":15.0,"lat":19.952582877035514,"lon":75.12926699343826,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Palaswadi","t":"Khuldabad","s":"Ganesh Mate","p":2700.0,"tp":25.0,"lat":20.023175342968194,"lon":75.15237601895713,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Pimpri","t":"Khuldabad","s":"Ganesh Mate","p":1692.0,"tp":20.0,"lat":20.008386352308182,"lon":75.17512754860272,"y":[0,2.0,1.0,5.0],"tot":8.0},{"v":"Rasulpura","t":"Khuldabad","s":"Mahesh Jadhav","p":859.0,"tp":15.0,"lat":19.974176134091692,"lon":75.26530461100778,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Salukheda","t":"Khuldabad","s":"Mahesh Jadhav","p":436.0,"tp":10.0,"lat":20.0382118031967,"lon":75.1550340200877,"y":[0,0,0,0],"tot":0.0},{"v":"Sardulwadi","t":"Khuldabad","s":"Ganesh Mate","p":0,"tp":10.0,"lat":19.923507187495954,"lon":75.24462081409865,"y":[0,0,0,1.0],"tot":1.0},{"v":"Sarai","t":"Khuldabad","s":"Ganesh Mate","p":1008.0,"tp":20.0,"lat":19.955709576234362,"lon":75.16584507257859,"y":[0,0,1.0,0],"tot":1.0},{"v":"Sawkheda","t":"Khuldabad","s":"Ankush","p":353.0,"tp":0,"lat":20.03727334613355,"lon":75.28698106101467,"y":[0,0,0,0],"tot":0.0},{"v":"Shahjatpur","t":"Khuldabad","s":"Ganesh Mate","p":347.0,"tp":3.0,"lat":20.00675461936736,"lon":75.2755565820919,"y":[0,0,0,0],"tot":0.0},{"v":"Shankarpur Wadi","t":"Khuldabad","s":"Mahesh Jadhav","p":470.0,"tp":4.0,"lat":19.985948046924992,"lon":75.26084668506905,"y":[0,0,0,1.0],"tot":1.0},{"v":"Shekapuri","t":"Khuldabad","s":"Ganesh Mate","p":120.0,"tp":7.0,"lat":19.963270524705692,"lon":75.12718560972515,"y":[0,0,0,1.0],"tot":1.0},{"v":"Shekhapur","t":"Khuldabad","s":"Ganesh Mate","p":649.0,"tp":15.0,"lat":19.914935683803105,"lon":75.2450854894876,"y":[0,0,0,0],"tot":0.0},{"v":"Sobalgaon","t":"Khuldabad","s":"Ankush","p":973.0,"tp":40.0,"lat":20.067255450221342,"lon":75.16409334188792,"y":[0,0,0,3.0],"tot":3.0},{"v":"Sonkheda","t":"Khuldabad","s":"Mahesh Jadhav","p":1155.0,"tp":15.0,"lat":20.039322824318944,"lon":75.15160990604323,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Sulibhanjan","t":"Khuldabad","s":"Ganesh Mate","p":2863.0,"tp":40.0,"lat":19.949225606993068,"lon":75.28712432902559,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Sultanpur","t":"Khuldabad","s":"Ankush","p":2364.0,"tp":30.0,"lat":19.955782507848642,"lon":75.26527013598093,"y":[0,1.0,0,4.0],"tot":5.0},{"v":"Tajnapur","t":"Khuldabad","s":"Ankush","p":2115.0,"tp":25.0,"lat":20.050770362871933,"lon":75.18738481720146,"y":[0,0,0,0],"tot":0.0},{"v":"Takali rajrai","t":"Khuldabad","s":"Ganesh Mate","p":4645.0,"tp":35.0,"lat":19.98312773133045,"lon":75.27136255789532,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Talyachi Wadi","t":"Khuldabad","s":"Ganesh Mate","p":486.0,"tp":12.0,"lat":20.014688937222644,"lon":75.27655557733448,"y":[0,0,0,0],"tot":0.0},{"v":"Tisgaon","t":"Khuldabad","s":"Ganesh Mate","p":1166.0,"tp":50.0,"lat":20.091998224522452,"lon":75.25288515978967,"y":[0,1.0,5.0,4.0],"tot":10.0},{"v":"Verul","t":"Khuldabad","s":"Ganesh Mate","p":6978.0,"tp":45.0,"lat":20.006977003451105,"lon":75.21333396628617,"y":[0,2.0,1.0,1.0],"tot":4.0},{"v":"Viramgaon","t":"Khuldabad","s":"Ankush","p":1506.0,"tp":30.0,"lat":20.01813839585172,"lon":75.20696696246442,"y":[0,0,0,1.0],"tot":1.0},{"v":"Wadgaon","t":"Khuldabad","s":"Ankush","p":358.0,"tp":15.0,"lat":20.099169248925033,"lon":75.16592435153599,"y":[0,0,0,0],"tot":0.0},{"v":"Wadhod Bk.","t":"Khuldabad","s":"Ankush","p":1371.0,"tp":30.0,"lat":20.018978158063195,"lon":75.22413916905937,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Yesgaon","t":"Khuldabad","s":"Ankush","p":2683.0,"tp":30.0,"lat":20.01884098562635,"lon":75.16770951631857,"y":[0,1.0,0,3.0],"tot":4.0},{"v":"Zari","t":"Khuldabad","s":"Ankush","p":804.0,"tp":20.0,"lat":20.05428970578041,"lon":75.24125290059108,"y":[0,0,1.0,0],"tot":1.0},{"v":"Adgaon Bk.","t":"Phulambri","s":"Sujal","p":1881.0,"tp":60.0,"lat":20.19273555792642,"lon":75.44508604321442,"y":[0,0,0,1.0],"tot":1.0},{"v":"Adgaon Bhume","t":"Phulambri","s":"Nivrutti","p":0,"tp":0,"lat":20.06099450164654,"lon":75.42374504798389,"y":[0,0,1.0,0],"tot":1.0},{"v":"Adgaon Kh.","t":"Phulambri","s":"Nivrutti","p":1090.0,"tp":50.0,"lat":20.094283378076668,"lon":75.27162979882276,"y":[0,0,0,0],"tot":0.0},{"v":"Alad","t":"Phulambri","s":"Raju","p":3967.0,"tp":180.0,"lat":20.1562703103507,"lon":75.50730437937852,"y":[0,0,0,0],"tot":0.0},{"v":"Babhulgaon","t":"Phulambri","s":"Nivrutti","p":703.0,"tp":35.0,"lat":20.059022730461635,"lon":75.52844514541849,"y":[0,0,1.0,0],"tot":1.0},{"v":"Babhulgaon Kh.","t":"Phulambri","s":"Sujal","p":1325.0,"tp":40.0,"lat":20.07727163231882,"lon":75.40174165250724,"y":[0,0,0,0],"tot":0.0},{"v":"Babra","t":"Phulambri","s":"Nivrutti","p":5006.0,"tp":100.0,"lat":20.017565638146525,"lon":75.43387560395325,"y":[0,0,2.0,3.0],"tot":5.0},{"v":"Bhalgaon","t":"Phulambri","s":"Sujal","p":719.0,"tp":50.0,"lat":20.07121707581361,"lon":75.32209999435739,"y":[0,0,0,0],"tot":0.0},{"v":"Bhawadi","t":"Phulambri","s":"Sujal","p":815.0,"tp":40.0,"lat":20.199364962414187,"lon":75.45524627500224,"y":[0,0,0,1.0],"tot":1.0},{"v":"Bhoygaon","t":"Phulambri","s":"Sujal","p":252.0,"tp":40.0,"lat":20.013778781722717,"lon":75.3455938000754,"y":[0,0,0,0],"tot":0.0},{"v":"Bilda","t":"Phulambri","s":"Sujal","p":2555.0,"tp":50.0,"lat":20.138709539222596,"lon":75.3418806255404,"y":[0,0,1.0,0],"tot":1.0},{"v":"Bodhegaon Bk.","t":"Phulambri","s":"Nivrutti","p":1995.0,"tp":50.0,"lat":20.189509256021733,"lon":75.4649161355726,"y":[0,0,0,0],"tot":0.0},{"v":"Bodhegaon Kh.","t":"Phulambri","s":"Nivrutti","p":1409.0,"tp":50.0,"lat":20.16120462114161,"lon":75.34442644421168,"y":[0,0,0,0],"tot":0.0},{"v":"Borgaon Arj","t":"Phulambri","s":"Raju","p":2319.0,"tp":70.0,"lat":20.13411547926903,"lon":75.51453349989124,"y":[0,0,0,0],"tot":0.0},{"v":"Chincholi Nakeeb","t":"Phulambri","s":"Sujal","p":1474.0,"tp":30.0,"lat":20.009979678321876,"lon":75.43158387820776,"y":[0,1.0,0,0],"tot":1.0},{"v":"Chincholi Bk","t":"Phulambri","s":"Sujal","p":948.0,"tp":10.0,"lat":19.978424166313975,"lon":75.51529777786722,"y":[0,0,0,0],"tot":0.0},{"v":"Daregaon","t":"Phulambri","s":"Raju","p":1114.0,"tp":35.0,"lat":20.1645430221516,"lon":75.42973670645685,"y":[0,1.0,0,4.0],"tot":5.0},{"v":"Dhamangaon","t":"Phulambri","s":"Raju","p":3274.0,"tp":170.0,"lat":20.01914091309443,"lon":75.52229416519589,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Dhanora","t":"Phulambri","s":"Sujal","p":923.0,"tp":40.0,"lat":20.060764226509402,"lon":75.50585845937124,"y":[0,0,1.0,0],"tot":1.0},{"v":"Dongargaon Kawad","t":"Phulambri","s":"Sujal","p":1496.0,"tp":60.0,"lat":20.192393529110003,"lon":75.46992102287432,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Dongargaon Shev","t":"Phulambri","s":"Nivrutti","p":1918.0,"tp":15.0,"lat":19.977133177764067,"lon":75.39766272610179,"y":[0,0,1.0,0],"tot":1.0},{"v":"Fulambri","t":"Phulambri","s":"Raju","p":16665.0,"tp":150.0,"lat":20.147357478550532,"lon":75.45834592996117,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Ganori","t":"Phulambri","s":"Nivrutti","p":6230.0,"tp":200.0,"lat":20.19538502464458,"lon":75.39104559669285,"y":[0,3.0,2.0,7.0],"tot":12.0},{"v":"Georai Gungi","t":"Phulambri","s":"Sujal","p":2143.0,"tp":80.0,"lat":20.11726556641874,"lon":75.40065502414996,"y":[0,0,6.0,2.0],"tot":8.0},{"v":"Georai Paiga","t":"Phulambri","s":"Sujal","p":1954.0,"tp":40.0,"lat":20.13179886113331,"lon":75.46045383035536,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Girsawali","t":"Phulambri","s":"Sujal","p":844.0,"tp":30.0,"lat":20.11546752070765,"lon":75.54782837498679,"y":[0,0,0,0],"tot":0.0},{"v":"Gumastala","t":"Phulambri","s":"Raju","p":254.0,"tp":25.0,"lat":19.988316983884715,"lon":75.41219224574053,"y":[0,0,0,0],"tot":0.0},{"v":"Hiwara","t":"Phulambri","s":"Nivrutti","p":1087.0,"tp":25.0,"lat":20.12888085108821,"lon":75.46269991837411,"y":[0,0,1.0,0],"tot":1.0},{"v":"Jalgaon Mete","t":"Phulambri","s":"Raju","p":918.0,"tp":20.0,"lat":20.160572052188424,"lon":75.46080059096823,"y":[0,0,1.0,0],"tot":1.0},{"v":"Janefal","t":"Phulambri","s":"Nivrutti","p":513.0,"tp":10.0,"lat":20.195466354189634,"lon":75.40603083363428,"y":[0,0,0,0],"tot":0.0},{"v":"Jategaon","t":"Phulambri","s":"Sujal","p":2468.0,"tp":90.0,"lat":19.94978589102521,"lon":75.37148459958024,"y":[0,4.0,3.0,2.0],"tot":9.0},{"v":"Jatwa","t":"Phulambri","s":"Raju","p":1705.0,"tp":20.0,"lat":19.94936691781557,"lon":75.3502753053504,"y":[0,0,0,0],"tot":0.0},{"v":"Kanhegaon","t":"Phulambri","s":"Nivrutti","p":839.0,"tp":40.0,"lat":19.984976237587134,"lon":75.3520549080246,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kanhori","t":"Phulambri","s":"Nivrutti","p":1935.0,"tp":15.0,"lat":20.00525702848031,"lon":75.43579369994269,"y":[0,0,1.0,0],"tot":1.0},{"v":"Kawitkheda","t":"Phulambri","s":"Raju","p":480.0,"tp":15.0,"lat":20.06734117040918,"lon":75.35189791337048,"y":[0,2.0,0,0],"tot":2.0},{"v":"Khamgaon","t":"Phulambri","s":"Raju","p":4714.0,"tp":250.0,"lat":20.01198236723059,"lon":75.31945136824098,"y":[0,1.0,7.0,12.0],"tot":20.0},{"v":"Kingaon","t":"Phulambri","s":"Nivrutti","p":3205.0,"tp":30.0,"lat":20.055697622328434,"lon":75.47836218016104,"y":[0,1.0,0,0],"tot":1.0},{"v":"Lahanyachiwadi","t":"Phulambri","s":"Sujal","p":1977.0,"tp":15.0,"lat":20.080766945837237,"lon":75.27821409365967,"y":[0,1.0,0,0],"tot":1.0},{"v":"Lalwan","t":"Phulambri","s":"Nivrutti","p":737.0,"tp":10.0,"lat":20.101655232325783,"lon":75.3760216328296,"y":[0,0,0,0],"tot":0.0},{"v":"Mahal Kinhola","t":"Phulambri","s":"Raju","p":1495.0,"tp":90.0,"lat":20.156446639805452,"lon":75.50639182981203,"y":[0,4.0,3.0,5.0],"tot":12.0},{"v":"Malodyachiwadi","t":"Phulambri","s":"Raju","p":468.0,"tp":10.0,"lat":20.104988827396117,"lon":75.52384384414114,"y":[0,0,0,0],"tot":0.0},{"v":"Mamnabad","t":"Phulambri","s":"Raju","p":800.0,"tp":25.0,"lat":20.05531504862541,"lon":75.28920865978102,"y":[0,0,0,1.0],"tot":1.0},{"v":"Marsawali","t":"Phulambri","s":"Sujal","p":2084.0,"tp":30.0,"lat":20.10610061736611,"lon":75.3537807050791,"y":[0,0,0,1.0],"tot":1.0},{"v":"Mhasla","t":"Phulambri","s":"Nivrutti","p":497.0,"tp":30.0,"lat":20.07805020665816,"lon":75.31408365585759,"y":[0,0,0,0],"tot":0.0},{"v":"Murshadabadwadi","t":"Phulambri","s":"Nivrutti","p":1180.0,"tp":12.0,"lat":20.04657391773963,"lon":75.27873408542118,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Naigaon","t":"Phulambri","s":"Nivrutti","p":1307.0,"tp":10.0,"lat":20.137910938721713,"lon":75.36948153128198,"y":[0,0,0,0],"tot":0.0},{"v":"Naigaon HN","t":"Phulambri","s":"Raju","p":1433.0,"tp":40.0,"lat":20.138259424238488,"lon":75.5229116195604,"y":[0,0,1.0,0],"tot":1.0},{"v":"Nandra","t":"Phulambri","s":"Sujal","p":1768.0,"tp":25.0,"lat":20.086257825665054,"lon":75.38479117193498,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Narla","t":"Phulambri","s":"Raju","p":1093.0,"tp":12.0,"lat":20.017700758048193,"lon":75.51019468290838,"y":[0,0,1.0,0],"tot":1.0},{"v":"Nidhona","t":"Phulambri","s":"Nivrutti","p":2957.0,"tp":40.0,"lat":19.97729906382786,"lon":75.45893913144401,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Nimkheda","t":"Phulambri","s":"Raju","p":1258.0,"tp":75.0,"lat":20.120570309894365,"lon":75.38068860185413,"y":[0,1.0,0,0],"tot":1.0},{"v":"Padali ekghar","t":"Phulambri","s":"Raju","p":575.0,"tp":10.0,"lat":20.201485442251077,"lon":75.41414150824069,"y":[0,2.0,0,0],"tot":2.0},{"v":"Padali Wawana","t":"Phulambri","s":"Nivrutti","p":294.0,"tp":35.0,"lat":20.148969530646106,"lon":75.45111217144084,"y":[0,0,0,1.0],"tot":1.0},{"v":"Pal","t":"Phulambri","s":"Raju","p":4339.0,"tp":150.0,"lat":19.968442191272672,"lon":75.41687773034418,"y":[0,0,2.0,0],"tot":2.0},{"v":"Panwadi","t":"Phulambri","s":"Sujal","p":2018.0,"tp":40.0,"lat":20.160184353133612,"lon":75.31290055681318,"y":[0,0,0,0],"tot":0.0},{"v":"Pathri","t":"Phulambri","s":"Raju","p":2131.0,"tp":55.0,"lat":20.112178509919534,"lon":75.31443757132831,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Pedgaon Alad","t":"Phulambri","s":"Raju","p":742.0,"tp":10.0,"lat":20.126760758553488,"lon":75.51004608724348,"y":[0,0,0,0],"tot":0.0},{"v":"Pimpalgaon Gangdeo","t":"Phulambri","s":"Sujal","p":1706.0,"tp":90.0,"lat":20.130804711974616,"lon":75.53855959085486,"y":[0,5.0,3.0,1.0],"tot":9.0},{"v":"Pimpalgaon Walan","t":"Phulambri","s":"Nivrutti","p":2382.0,"tp":50.0,"lat":20.101549904283996,"lon":75.43132581789705,"y":[0,0,0,0],"tot":0.0},{"v":"Pirbawada","t":"Phulambri","s":"Sujal","p":3029.0,"tp":100.0,"lat":20.09191284166863,"lon":75.43950907052668,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Pokhari","t":"Phulambri","s":"Nivrutti","p":351.0,"tp":10.0,"lat":19.94967184126503,"lon":75.38873927340948,"y":[0,0,0,0],"tot":0.0},{"v":"Pophala","t":"Phulambri","s":"Sujal","p":408.0,"tp":8.0,"lat":19.942067074280576,"lon":75.36933729496764,"y":[0,0,0,1.0],"tot":1.0},{"v":"Ranjangaon shiv","t":"Phulambri","s":"Sujal","p":1155.0,"tp":25.0,"lat":20.137608679277335,"lon":75.31641168720003,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Relgaon","t":"Phulambri","s":"Nivrutti","p":962.0,"tp":20.0,"lat":20.089334562780287,"lon":75.30496611640704,"y":[0,0,1.0,3.0],"tot":4.0},{"v":"Ridhora","t":"Phulambri","s":"Sujal","p":1500.0,"tp":30.0,"lat":20.057391707049877,"lon":75.43582579646691,"y":[0,0,1.0,3.0],"tot":4.0},{"v":"Sanjul","t":"Phulambri","s":"Sujal","p":1003.0,"tp":10.0,"lat":19.994672085766727,"lon":75.34817853663509,"y":[0,0,0,0],"tot":0.0},{"v":"Satala Bk.","t":"Phulambri","s":"Raju","p":1158.0,"tp":15.0,"lat":19.956631313385156,"lon":75.36955723794986,"y":[0,0,2.0,0],"tot":2.0},{"v":"Selgaon","t":"Phulambri","s":"Raju","p":1183.0,"tp":15.0,"lat":20.041841052431273,"lon":75.41537702238652,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Shahapur","t":"Phulambri","s":"Nivrutti","p":185.0,"tp":10.0,"lat":20.068921417835902,"lon":75.44879880653562,"y":[0,0,0,0],"tot":0.0},{"v":"Shelgaon","t":"Phulambri","s":"Nivrutti","p":427.0,"tp":15.0,"lat":20.116968868561187,"lon":75.39698462606336,"y":[0,0,0,0],"tot":0.0},{"v":"Shevta Bk.","t":"Phulambri","s":"Raju","p":532.0,"tp":15.0,"lat":20.08868727452835,"lon":75.31884157992845,"y":[0,0,1.0,0],"tot":1.0},{"v":"Shevta Kh.","t":"Phulambri","s":"Raju","p":1154.0,"tp":25.0,"lat":19.99818695528605,"lon":75.36464612475523,"y":[0,0,0,1.0],"tot":1.0},{"v":"Shirodi Bk","t":"Phulambri","s":"Nivrutti","p":1832.0,"tp":20.0,"lat":20.053953270678626,"lon":75.44494471320452,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Shirodi Kh","t":"Phulambri","s":"Nivrutti","p":1354.0,"tp":20.0,"lat":20.06763620853601,"lon":75.43796822526065,"y":[0,0,0,0],"tot":0.0},{"v":"Sonari Kh.","t":"Phulambri","s":"Nivrutti","p":177.0,"tp":15.0,"lat":20.140533012759313,"lon":75.42190523014538,"y":[0,0,0,0],"tot":0.0},{"v":"Sultanwadi","t":"Phulambri","s":"Sujal","p":1003.0,"tp":30.0,"lat":20.05797544413157,"lon":75.43839139968337,"y":[0,0,0.0,0],"tot":0.0},{"v":"Takali Kolte","t":"Phulambri","s":"Sujal","p":1921.0,"tp":80.0,"lat":20.09713654623422,"lon":75.40360758030205,"y":[0,2.0,1.0,0],"tot":3.0},{"v":"Talegaon","t":"Phulambri","s":"Sujal","p":0,"tp":80.0,"lat":20.14152271110122,"lon":75.44205719054304,"y":[0,0,0,1.0],"tot":1.0},{"v":"Umravati","t":"Phulambri","s":"Raju","p":3513.0,"tp":25.0,"lat":20.11503306906365,"lon":75.30082546769073,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Viramgaon","t":"Phulambri","s":"Nivrutti","p":0,"tp":0,"lat":20.09055961435512,"lon":75.34862486270069,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Wadod Bajar","t":"Phulambri","s":"Raju","p":4835.0,"tp":130.0,"lat":19.954152506356046,"lon":75.35617110833753,"y":[0,4.0,1.0,4.0],"tot":9.0},{"v":"Wavana","t":"Phulambri","s":"Nivrutti","p":0,"tp":0,"lat":20.131842441321314,"lon":75.32018074065317,"y":[0,2.0,0,0],"tot":2.0},{"v":"Waghalagaon","t":"Phulambri","s":"Sujal","p":1366.0,"tp":30.0,"lat":20.023264409464367,"lon":75.35535343937885,"y":[0,1.0,0,0],"tot":1.0},{"v":"Waghola","t":"Phulambri","s":"Sujal","p":1429.0,"tp":50.0,"lat":20.070083336978545,"lon":75.42625322904482,"y":[0,0,0,3.0],"tot":3.0},{"v":"Wahegaon","t":"Phulambri","s":"Nivrutti","p":1385.0,"tp":40.0,"lat":20.051962999930147,"lon":75.54364091709536,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Wakod","t":"Phulambri","s":"Raju","p":1648.0,"tp":20.0,"lat":20.19104977062747,"lon":75.40361903442714,"y":[0,1.0,0,0],"tot":1.0},{"v":"Wanegaon Bk","t":"Phulambri","s":"Nivrutti","p":1319.0,"tp":30.0,"lat":20.110942694247044,"lon":75.36339404795407,"y":[0,0,0,0],"tot":0.0},{"v":"Waregaon","t":"Phulambri","s":"Nivrutti","p":3138.0,"tp":15.0,"lat":20.050608846319506,"lon":75.39076392284127,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Wiramgaon","t":"Phulambri","s":"Raju","p":896.0,"tp":40.0,"lat":20.05231925527237,"lon":75.3017575785802,"y":[0,0,0,0],"tot":0.0},{"v":"Abdullapur","t":"Paithan","s":"Dinesh","p":899.0,"tp":0,"lat":19.482026392533033,"lon":75.36584418396941,"y":[0,0,0,1.0],"tot":1.0},{"v":"Adgaon Javle","t":"Paithan","s":"Vishwas","p":1520.0,"tp":0,"lat":19.551618590466553,"lon":75.52365288352438,"y":[0,0,1.0,0],"tot":1.0},{"v":"Adool Bk.","t":"Paithan","s":"Dinesh","p":6101.0,"tp":0,"lat":19.292869574245394,"lon":75.35615626709746,"y":[0,1.0,1.0,5.0],"tot":7.0},{"v":"Adool Kh.","t":"Paithan","s":"Dinesh","p":1001.0,"tp":0,"lat":19.527434655803965,"lon":75.21837655272337,"y":[0,0,0,3.0],"tot":3.0},{"v":"Adool Tanda","t":"Paithan","s":"Dinesh","p":1309.0,"tp":0,"lat":19.555932956035715,"lon":75.42459508544836,"y":[0,0,3.0,2.0],"tot":5.0},{"v":"Agar-nandur","t":"Paithan","s":"Vishwas","p":1794.0,"tp":0,"lat":19.636722034075383,"lon":75.26259414568639,"y":[0,0,1.0,0],"tot":1.0},{"v":"Akhatwada","t":"Paithan","s":"Vishwas","p":2257.0,"tp":0,"lat":19.478478396339437,"lon":75.333155362741,"y":[0,2.0,4.0,1.0],"tot":7.0},{"v":"Alipur","t":"Paithan","s":"Vishwas","p":294.0,"tp":0,"lat":19.57253754750365,"lon":75.49718814999821,"y":[0,0,0,0],"tot":0.0},{"v":"Aliyabad","t":"Paithan","s":"Dinesh","p":751.0,"tp":0,"lat":19.582276763509878,"lon":75.34415680631624,"y":[0,2.0,0,0],"tot":2.0},{"v":"Amrapur","t":"Paithan","s":"Vishwas","p":773.0,"tp":0,"lat":19.398348883018596,"lon":75.45416975710557,"y":[0,0,0,0],"tot":0.0},{"v":"Anandpur","t":"Paithan","s":"Vishwas","p":1485.0,"tp":0,"lat":19.584787614977643,"lon":75.52659567835552,"y":[0,2.0,3.0,0],"tot":5.0},{"v":"Antarwali Khandi","t":"Paithan","s":"Vishwas","p":2006.0,"tp":0,"lat":19.49326587697781,"lon":75.23897209418297,"y":[0,0,0,1.0],"tot":1.0},{"v":"Apegaon","t":"Paithan","s":"Vishwas","p":2204.0,"tp":0,"lat":19.647727730249414,"lon":75.470126393577,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Aurangpur","t":"Paithan","s":"Dinesh","p":649.0,"tp":0,"lat":19.346486441401304,"lon":75.40346333968604,"y":[0,0,1.0,0],"tot":1.0},{"v":"Awade Uchegaon","t":"Paithan","s":"Vishwas","p":997.0,"tp":0,"lat":19.356024731512594,"lon":75.31214394033141,"y":[0,0,1.0,0],"tot":1.0},{"v":"Babhulgaon","t":"Paithan","s":"Dinesh","p":908.0,"tp":0,"lat":19.507886663429872,"lon":75.26900986424785,"y":[0,0,1.0,0],"tot":1.0},{"v":"Balanagar","t":"Paithan","s":"Vishwas","p":5660.0,"tp":0,"lat":19.388469818206715,"lon":75.26739410950869,"y":[0,4.0,1.0,5.0],"tot":10.0},{"v":"Balapur","t":"Paithan","s":"Dinesh","p":187.0,"tp":0,"lat":19.388102775778655,"lon":75.40083775844317,"y":[0,0,0,0],"tot":0.0},{"v":"Ballalpur","t":"Paithan","s":"Vishwas","p":355.0,"tp":0,"lat":19.59005523418168,"lon":75.32034345113553,"y":[0,0,0,0],"tot":0.0},{"v":"Bangala Tanda","t":"Paithan","s":"Dinesh","p":570.0,"tp":0,"lat":19.43403524095066,"lon":75.29132684272899,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Banni Tanda","t":"Paithan","s":"Dinesh","p":485.0,"tp":0,"lat":19.4353137464564,"lon":75.45904635606986,"y":[0,1.0,2.0,2.0],"tot":5.0},{"v":"Bidkin","t":"Paithan","s":"Dinesh","p":19596.0,"tp":0,"lat":19.41312243203701,"lon":75.4626557051387,"y":[0,5.0,4.0,2.0],"tot":11.0},{"v":"Bokud Jalgaon","t":"Paithan","s":"Dinesh","p":2720.0,"tp":0,"lat":19.57347924631485,"lon":75.47204777187355,"y":[0,0,3.0,2.0],"tot":5.0},{"v":"Borgaon","t":"Paithan","s":"Dinesh","p":901.0,"tp":0,"lat":19.553968100287168,"lon":75.54059993819361,"y":[0,6.0,3.0,2.0],"tot":11.0},{"v":"Bramhagaon","t":"Paithan","s":"Dinesh","p":619.0,"tp":0,"lat":19.44878119401899,"lon":75.40852290142674,"y":[0,1.0,2.0,1.0],"tot":4.0},{"v":"Bramhagavhan","t":"Paithan","s":"Dinesh","p":922.0,"tp":0,"lat":19.499748758992375,"lon":75.38276446998246,"y":[0,2.0,0,2.0],"tot":4.0},{"v":"Bramhangaon","t":"Paithan","s":"Dinesh","p":2193.0,"tp":0,"lat":19.612903893219897,"lon":75.31574311074337,"y":[0,0,0,1.0],"tot":1.0},{"v":"Chanakwadi","t":"Paithan","s":"Vishwas","p":867.0,"tp":0,"lat":19.621897291104208,"lon":75.42639681492221,"y":[0,1.0,0,0],"tot":1.0},{"v":"Changatpuri","t":"Paithan","s":"Vishwas","p":2748.0,"tp":0,"lat":19.397518184452956,"lon":75.44633936447508,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Chauryahattar Jalgaon","t":"Paithan","s":"Dinesh","p":977.0,"tp":0,"lat":19.5444858113359,"lon":75.4133785220266,"y":[0,1.0,3.0,0],"tot":4.0},{"v":"Chinchala","t":"Paithan","s":"Vishwas","p":1016.0,"tp":0,"lat":19.301354779235513,"lon":75.42949657616721,"y":[0,0,1.0,0],"tot":1.0},{"v":"Chondala","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.547115263675774,"lon":75.51584239210652,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Chincholi","t":"Paithan","s":"Dinesh","p":681.0,"tp":0,"lat":19.360416557169284,"lon":75.26093064626416,"y":[0,0,0,0],"tot":0.0},{"v":"Dabhrul","t":"Paithan","s":"Dinesh","p":1868.0,"tp":0,"lat":19.522198982364657,"lon":75.19844661723869,"y":[0,0,2.0,0],"tot":2.0},{"v":"Dadegaon Bk.","t":"Paithan","s":"Vishwas","p":1304.0,"tp":0,"lat":19.37063383586152,"lon":75.52893563614764,"y":[0,0,0,1.0],"tot":1.0},{"v":"Dadegaon Jahagir","t":"Paithan","s":"Vishwas","p":2343.0,"tp":0,"lat":19.56119000636186,"lon":75.240322665118,"y":[0,2.0,3.0,5.0],"tot":10.0},{"v":"Dadegaon Kh.","t":"Paithan","s":"Vishwas","p":260.0,"tp":0,"lat":19.327807323265326,"lon":75.4926739802985,"y":[0,0,0,0],"tot":0.0},{"v":"Dalwadi","t":"Paithan","s":"Vishwas","p":66.0,"tp":0,"lat":19.35790775449817,"lon":75.36516928271223,"y":[0,0,0,0],"tot":0.0},{"v":"Darakwadi","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.595940080676037,"lon":75.40686119997528,"y":[0,0,0,1.0],"tot":1.0},{"v":"Daregaon","t":"Paithan","s":"Dinesh","p":1304.0,"tp":0,"lat":19.520844725060467,"lon":75.23971388511451,"y":[0,0,2.0,4.0],"tot":6.0},{"v":"Dawarwadi","t":"Paithan","s":"Vishwas","p":5042.0,"tp":0,"lat":19.4119381112038,"lon":75.3327946349684,"y":[0,3.0,4.0,5.0],"tot":12.0},{"v":"Dera","t":"Paithan","s":"Vishwas","p":385.0,"tp":0,"lat":19.51142008105689,"lon":75.40906553027257,"y":[0,0,0,1.0],"tot":1.0},{"v":"Devgaon","t":"Paithan","s":"Vishwas","p":1173.0,"tp":0,"lat":19.45943720145733,"lon":75.30173112698976,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Devgaon Tanda","t":"Paithan","s":"Vishwas","p":642.0,"tp":0,"lat":19.575977916898534,"lon":75.31537582022312,"y":[0,0,0,0],"tot":0.0},{"v":"Dhakephal","t":"Paithan","s":"Dinesh","p":2368.0,"tp":0,"lat":19.589734837474094,"lon":75.29635096405161,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Dhangaon","t":"Paithan","s":"Dinesh","p":1810.0,"tp":0,"lat":19.51357907866011,"lon":75.56877516231889,"y":[0,5.0,7.0,4.0],"tot":16.0},{"v":"Dhorkin","t":"Paithan","s":"Dinesh","p":4691.0,"tp":0,"lat":19.42117944654423,"lon":75.41365092973125,"y":[0,2.0,0,3.0],"tot":5.0},{"v":"Dhupkheda","t":"Paithan","s":"Dinesh","p":1300.0,"tp":0,"lat":19.383138606294484,"lon":75.37029973956288,"y":[0,1.0,1.0,3.0],"tot":5.0},{"v":"Dinnapur","t":"Paithan","s":"Dinesh","p":1116.0,"tp":0,"lat":19.67769757111696,"lon":75.3864029252394,"y":[0,3.0,1.0,2.0],"tot":6.0},{"v":"Diyanatpur","t":"Paithan","s":"Dinesh","p":278.0,"tp":0,"lat":19.374262894256727,"lon":75.54215856332803,"y":[0,0,0,0],"tot":0.0},{"v":"Dongaon","t":"Paithan","s":"Dinesh","p":2309.0,"tp":0,"lat":19.313236492011175,"lon":75.28306153881441,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Dongri Naik Tanda","t":"Paithan","s":"Dinesh","p":600.0,"tp":0,"lat":19.357734624951455,"lon":75.29799884071144,"y":[0,0,0,0],"tot":0.0},{"v":"Ektuni","t":"Paithan","s":"Dinesh","p":3669.0,"tp":0,"lat":19.401218743742305,"lon":75.22612984672534,"y":[0,0,2.0,17.0],"tot":19.0},{"v":"Farola","t":"Paithan","s":"Dinesh","p":2003.0,"tp":0,"lat":19.38262461771594,"lon":75.24600847417685,"y":[0,3.0,2.0,2.0],"tot":7.0},{"v":"Gadhegaon Paithan","t":"Paithan","s":"Dinesh","p":910.0,"tp":0,"lat":19.373979070404197,"lon":75.27523843861478,"y":[0,6.0,0,1.0],"tot":7.0},{"v":"Gavtanda","t":"Paithan","s":"Dinesh","p":0,"tp":0,"lat":19.64784358507818,"lon":75.47847928038883,"y":[0,0,3.0,0],"tot":3.0},{"v":"Gazipur","t":"Paithan","s":"Dinesh","p":395.0,"tp":0,"lat":19.509765017130423,"lon":75.54417175196714,"y":[0,0,0,0],"tot":0.0},{"v":"Georai Bashi","t":"Paithan","s":"Dinesh","p":1548.0,"tp":0,"lat":19.42728860564443,"lon":75.25176764629721,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Georai Bk.","t":"Paithan","s":"Dinesh","p":1207.0,"tp":0,"lat":19.441976348187318,"lon":75.25420399576828,"y":[0,0,0,1.0],"tot":1.0},{"v":"Georai Kh.","t":"Paithan","s":"Dinesh","p":771.0,"tp":0,"lat":19.33200646722651,"lon":75.50903019761664,"y":[0,0,4.0,8.0],"tot":12.0},{"v":"Georai Marda","t":"Paithan","s":"Dinesh","p":473.0,"tp":0,"lat":19.59253921660401,"lon":75.34941790531423,"y":[0,0,0,1.0],"tot":1.0},{"v":"Gharegaon","t":"Paithan","s":"Vishwas","p":1179.0,"tp":0,"lat":19.492573926437622,"lon":75.57214942378657,"y":[0,0,0,0],"tot":0.0},{"v":"Gangapur nahri","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.602284301878566,"lon":75.36254049269363,"y":[0,0,0,1.0],"tot":1.0},{"v":"Ghari","t":"Paithan","s":"Vishwas","p":806.0,"tp":0,"lat":19.346977118630747,"lon":75.40428161208355,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Gidhada","t":"Paithan","s":"Dinesh","p":704.0,"tp":0,"lat":19.417834166942207,"lon":75.30493578401573,"y":[0,0,0,0],"tot":0.0},{"v":"Godhegaon Gangapur","t":"Paithan","s":"Dinesh","p":653.0,"tp":0,"lat":19.345815906724823,"lon":75.36168464317117,"y":[0,0,0,0],"tot":0.0},{"v":"Hanumantgaon","t":"Paithan","s":"Vishwas","p":378.0,"tp":0,"lat":19.49261414162334,"lon":75.38116704222651,"y":[0,0,0,0],"tot":0.0},{"v":"Harshi Bk.","t":"Paithan","s":"Vishwas","p":1517.0,"tp":0,"lat":19.55337909254585,"lon":75.52196115124907,"y":[0,3.0,2.0,4.0],"tot":9.0},{"v":"Harshi Kh.","t":"Paithan","s":"Vishwas","p":990.0,"tp":0,"lat":19.673855831890926,"lon":75.39781259512122,"y":[0,0,0,1.0],"tot":1.0},{"v":"Hingani","t":"Paithan","s":"Vishwas","p":500.0,"tp":0,"lat":19.41855044709899,"lon":75.24904359027553,"y":[0,0,0,1.0],"tot":1.0},{"v":"Hiradpuri","t":"Paithan","s":"Vishwas","p":3397.0,"tp":0,"lat":19.373317009472586,"lon":75.47104188953926,"y":[0,2.0,1.0,11.0],"tot":14.0},{"v":"Hirapur","t":"Paithan","s":"Vishwas","p":479.0,"tp":0,"lat":19.41242434183213,"lon":75.4310292976218,"y":[0,0,0,0],"tot":0.0},{"v":"Hiwara Chondhala","t":"Paithan","s":"Vishwas","p":654.0,"tp":0,"lat":19.492684274562087,"lon":75.31733417873392,"y":[0,0,1.0,0],"tot":1.0},{"v":"Honobachiwadi","t":"Paithan","s":"Vishwas","p":631.0,"tp":0,"lat":19.529274510802374,"lon":75.47227306223023,"y":[0,1.0,0,0],"tot":1.0},{"v":"Imampur","t":"Paithan","s":"Dinesh","p":466.0,"tp":0,"lat":19.51106294002171,"lon":75.17652464719747,"y":[0,0,0,0],"tot":0.0},{"v":"Inayatpur","t":"Paithan","s":"Dinesh","p":242.0,"tp":0,"lat":19.54451806942025,"lon":75.51803745421655,"y":[0,0,0,0],"tot":0.0},{"v":"Indegaon","t":"Paithan","s":"Vishwas","p":1054.0,"tp":0,"lat":19.36117798682132,"lon":75.28001252759539,"y":[0,0,0,1.0],"tot":1.0},{"v":"Isarwadi","t":"Paithan","s":"Vishwas","p":4545.0,"tp":0,"lat":19.547110728367837,"lon":75.25819682921,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Ismailpur","t":"Paithan","s":"Vishwas","p":176.0,"tp":0,"lat":19.46500973293447,"lon":75.59238541249314,"y":[0,0,0,0],"tot":0.0},{"v":"Jalgaon","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.3619915651625,"lon":75.43337738704372,"y":[0,0,0,1.0],"tot":1.0},{"v":"Jainpur","t":"Paithan","s":"Vishwas","p":106.0,"tp":0,"lat":19.419065629639118,"lon":75.26882358735912,"y":[0,0,0,0],"tot":0.0},{"v":"Jaitpur","t":"Paithan","s":"Vishwas","p":146.0,"tp":0,"lat":19.451533037447593,"lon":75.22527760794509,"y":[0,0,0,0],"tot":0.0},{"v":"Jambhali","t":"Paithan","s":"Dinesh","p":1159.0,"tp":0,"lat":19.469482523445407,"lon":75.52063682399778,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Jogeshwari","t":"Paithan","s":"Vishwas","p":662.0,"tp":0,"lat":19.421471498412274,"lon":75.20084076231339,"y":[0,0,0,0],"tot":0.0},{"v":"Kadethan Bk.","t":"Paithan","s":"Vishwas","p":3232.0,"tp":0,"lat":19.584142039060346,"lon":75.55394482281918,"y":[0,0,5.0,2.0],"tot":7.0},{"v":"Kadethan Kh.","t":"Paithan","s":"Vishwas","p":1016.0,"tp":0,"lat":19.502488083327645,"lon":75.3804310303529,"y":[0,0,0,0],"tot":0.0},{"v":"Kapuswadi","t":"Paithan","s":"Vishwas","p":855.0,"tp":0,"lat":19.674560114817993,"lon":75.39036893474483,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Karanj Kheda","t":"Paithan","s":"Vishwas","p":709.0,"tp":0,"lat":19.420894240855826,"lon":75.25386496437989,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Karkin","t":"Paithan","s":"Dinesh","p":3338.0,"tp":0,"lat":19.61358860840373,"lon":75.4227067654806,"y":[0,0,1.0,2.0],"tot":3.0},{"v":"Kasarpadli","t":"Paithan","s":"Vishwas","p":539.0,"tp":0,"lat":19.311462734852373,"lon":75.35802155671959,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Katpur","t":"Paithan","s":"Vishwas","p":5192.0,"tp":0,"lat":19.491740151364397,"lon":75.40202736507449,"y":[0,3.0,4.0,2.0],"tot":9.0},{"v":"Kaudgaon","t":"Paithan","s":"Dinesh","p":683.0,"tp":0,"lat":19.54162440823299,"lon":75.46817872104124,"y":[0,1.0,0,2.0],"tot":3.0},{"v":"Kaundar","t":"Paithan","s":"Vishwas","p":406.0,"tp":0,"lat":19.388531964838172,"lon":75.40237920391597,"y":[0,0,0,0],"tot":0.0},{"v":"Kawasan","t":"Paithan","s":"Vishwas","p":810.0,"tp":0,"lat":19.596660322880663,"lon":75.53781679743106,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Kekat Jalgaon","t":"Paithan","s":"Vishwas","p":3517.0,"tp":0,"lat":19.45072158456666,"lon":75.25142122135169,"y":[0,4.0,5.0,5.0],"tot":14.0},{"v":"Kesapuri","t":"Paithan","s":"Dinesh","p":580.0,"tp":0,"lat":19.508951467569275,"lon":75.47045949480993,"y":[0,1.0,0,1.0],"tot":2.0},{"v":"Khadgaon","t":"Paithan","s":"Dinesh","p":2290.0,"tp":0,"lat":19.434239123629826,"lon":75.48150381285893,"y":[0,2.0,1.0,3.0],"tot":6.0},{"v":"Khamjalgaon","t":"Paithan","s":"Dinesh","p":588.0,"tp":0,"lat":19.499174655077084,"lon":75.5673569388775,"y":[0,2.0,2.0,0],"tot":4.0},{"v":"Khandala","t":"Paithan","s":"Vishwas","p":919.0,"tp":0,"lat":19.444809235057317,"lon":75.25231570966994,"y":[0,2.0,0,0],"tot":2.0},{"v":"Khandewadi","t":"Paithan","s":"Dinesh","p":635.0,"tp":0,"lat":19.564075186778375,"lon":75.36130582842414,"y":[0,0,0,1.0],"tot":1.0},{"v":"Kherda","t":"Paithan","s":"Vishwas","p":1940.0,"tp":0,"lat":19.571424875979602,"lon":75.5225329942923,"y":[0,0,2.0,6.0],"tot":8.0},{"v":"Kheda Tanda","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.46682675675266,"lon":75.48282751311802,"y":[0,0,1.0,0],"tot":1.0},{"v":"Koli Bodkha","t":"Paithan","s":"Vishwas","p":2596.0,"tp":0,"lat":19.45187090926337,"lon":75.36034682903075,"y":[0,2.0,1.0,2.0],"tot":5.0},{"v":"Krishnapur","t":"Paithan","s":"Vishwas","p":1558.0,"tp":0,"lat":19.359258130619516,"lon":75.42657083638373,"y":[0,0,0,0],"tot":0.0},{"v":"Kutub Kheda","t":"Paithan","s":"Vishwas","p":1076.0,"tp":0,"lat":19.43341961360944,"lon":75.49093146661171,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Lakhegaon","t":"Paithan","s":"Dinesh","p":1032.0,"tp":0,"lat":19.523862797438515,"lon":75.27969167679343,"y":[0,1.0,1.0,4.0],"tot":6.0},{"v":"Lakhephal","t":"Paithan","s":"Vishwas","p":1112.0,"tp":0,"lat":19.52051753206603,"lon":75.41229148856262,"y":[0,0,0,0],"tot":0.0},{"v":"Lamgavhan","t":"Paithan","s":"Dinesh","p":599.0,"tp":0,"lat":19.60552120060573,"lon":75.3914804211884,"y":[0,1.0,2.0,0],"tot":3.0},{"v":"Limbgaon","t":"Paithan","s":"Vishwas","p":1730.0,"tp":0,"lat":19.427265466395095,"lon":75.35873614094663,"y":[0,3.0,0,0],"tot":3.0},{"v":"Lohagaon Bk.","t":"Paithan","s":"Dinesh","p":2809.0,"tp":0,"lat":19.436260932108443,"lon":75.49757337238057,"y":[0,2.0,2.0,2.0],"tot":6.0},{"v":"Lohagaon Kh.","t":"Paithan","s":"Dinesh","p":1620.0,"tp":0,"lat":19.380469583323627,"lon":75.30328179728491,"y":[0,0,0,0],"tot":0.0},{"v":"Mahamadpur","t":"Paithan","s":"Vishwas","p":255.0,"tp":0,"lat":19.59795734777092,"lon":75.41555975228825,"y":[0,0,0,0],"tot":0.0},{"v":"Mankapur","t":"Paithan","s":"Vishwas","p":243.0,"tp":0,"lat":19.541039484568007,"lon":75.37018056829497,"y":[0,0,0,0],"tot":0.0},{"v":"Mavasgavhan","t":"Paithan","s":"Dinesh","p":790.0,"tp":0,"lat":19.462195766401933,"lon":75.17991426681093,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Mayagaon","t":"Paithan","s":"Vishwas","p":851.0,"tp":0,"lat":19.447277930078798,"lon":75.37153097372838,"y":[0,0,1.0,0],"tot":1.0},{"v":"Meharban Naik Tanda","t":"Paithan","s":"Dinesh","p":1016.0,"tp":0,"lat":19.5106831211439,"lon":75.4540221553752,"y":[0,0,1.0,0],"tot":1.0},{"v":"Mharola","t":"Paithan","s":"Dinesh","p":1784.0,"tp":0,"lat":19.32198954664995,"lon":75.47175973749225,"y":[0,0,1.0,10.0],"tot":11.0},{"v":"Mirkheda","t":"Paithan","s":"Dinesh","p":528.0,"tp":0,"lat":19.356549762875762,"lon":75.50197021029062,"y":[0,0,1.0,3.0],"tot":4.0},{"v":"Mudhalwadi","t":"Paithan","s":"Vishwas","p":5497.0,"tp":0,"lat":19.447633135383622,"lon":75.42081823833585,"y":[0,0,4.0,2.0],"tot":6.0},{"v":"Mulani Wadgaon","t":"Paithan","s":"Dinesh","p":1370.0,"tp":0,"lat":19.462505166976097,"lon":75.22371408648182,"y":[0,2.0,2.0,1.0],"tot":5.0},{"v":"Muradabad","t":"Paithan","s":"Vishwas","p":289.0,"tp":0,"lat":19.5113753787712,"lon":75.43700473818767,"y":[0,0,0,0],"tot":0.0},{"v":"Murma","t":"Paithan","s":"Vishwas","p":1445.0,"tp":0,"lat":19.44859675651351,"lon":75.55884968889133,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Naigaon","t":"Paithan","s":"Vishwas","p":1198.0,"tp":0,"lat":19.337099791707004,"lon":75.30509735354629,"y":[0,1.0,1.0,1.0],"tot":3.0},{"v":"Naigavhan","t":"Paithan","s":"Vishwas","p":304.0,"tp":0,"lat":19.438700964277146,"lon":75.24388608051821,"y":[0,2.0,0,0],"tot":2.0},{"v":"Nandalgaon","t":"Paithan","s":"Dinesh","p":1220.0,"tp":0,"lat":19.49670906617247,"lon":75.5637163554111,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Nandar","t":"Paithan","s":"Vishwas","p":4245.0,"tp":0,"lat":19.49746569069239,"lon":75.51788977699039,"y":[0,0,2.0,4.0],"tot":6.0},{"v":"Nakstrawadi","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.317222416057348,"lon":75.38106954214398,"y":[0,0,0,1.0],"tot":1.0},{"v":"Natkarwadi","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.38135970079848,"lon":75.5381019776087,"y":[0,0,1.0,3.0],"tot":4.0},{"v":"Nanegaon","t":"Paithan","s":"Vishwas","p":1043.0,"tp":0,"lat":19.330467027458187,"lon":75.36725241563101,"y":[0,0,0,4.0],"tot":4.0},{"v":"Narayangaon","t":"Paithan","s":"Vishwas","p":1448.0,"tp":0,"lat":19.462153421567184,"lon":75.46360988185457,"y":[0,3.0,1.0,4.0],"tot":8.0},{"v":"Navgaon","t":"Paithan","s":"Vishwas","p":8319.0,"tp":0,"lat":19.554528387379687,"lon":75.23506742409828,"y":[0,0,1.0,3.0],"tot":4.0},{"v":"Nilajgaon","t":"Paithan","s":"Dinesh","p":2846.0,"tp":0,"lat":19.424138576569522,"lon":75.34150160946137,"y":[0,1.0,0,0],"tot":1.0},{"v":"Paithan","t":"Paithan","s":"Vishwas","p":0,"tp":0,"lat":19.48,"lon":75.3833,"y":[0,5.0,7.0,6.0],"tot":18.0},{"v":"Pachalgaon","t":"Paithan","s":"Vishwas","p":1007.0,"tp":0,"lat":19.568465362681344,"lon":75.55884885052821,"y":[0,1.0,2.0,4.0],"tot":7.0},{"v":"Pachod Bk.","t":"Paithan","s":"Vishwas","p":7594.0,"tp":0,"lat":19.582489208138025,"lon":75.22722183843486,"y":[0,1.0,1.0,3.0],"tot":5.0},{"v":"Pachod Kh.","t":"Paithan","s":"Vishwas","p":994.0,"tp":0,"lat":19.319867798040708,"lon":75.42069257313777,"y":[0,0,0,0],"tot":0.0},{"v":"Padli","t":"Paithan","s":"Dinesh","p":1837.0,"tp":0,"lat":19.619046370786258,"lon":75.3465957443273,"y":[0,0,0,4.0],"tot":4.0},{"v":"Paithan kheda","t":"Paithan","s":"Dinesh","p":1705.0,"tp":0,"lat":19.5709276892676,"lon":75.40285256902062,"y":[0,1.0,4.0,2.0],"tot":7.0},{"v":"Pangra","t":"Paithan","s":"Dinesh","p":1679.0,"tp":0,"lat":19.627681343382747,"lon":75.3707108664125,"y":[0,0,0,0],"tot":0.0},{"v":"Panthewadi","t":"Paithan","s":"Vishwas","p":36.0,"tp":0,"lat":19.52085217457639,"lon":75.38838452290462,"y":[0,0,0,0],"tot":0.0},{"v":"Parundi","t":"Paithan","s":"Dinesh","p":2008.0,"tp":0,"lat":19.386973516605618,"lon":75.45560621721866,"y":[0,0,1.0,15.0],"tot":16.0},{"v":"Parundi Tanda","t":"Paithan","s":"Dinesh","p":846.0,"tp":0,"lat":19.327948180954383,"lon":75.28841580517751,"y":[0,0,0,1.0],"tot":1.0},{"v":"Pategaon","t":"Paithan","s":"Vishwas","p":1871.0,"tp":0,"lat":19.290974573281975,"lon":75.33559418401602,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Patode Wadgaon","t":"Paithan","s":"Dinesh","p":763.0,"tp":0,"lat":19.445035384129778,"lon":75.22922093255885,"y":[0,0,0,0],"tot":0.0},{"v":"Pimpalwadi","t":"Paithan","s":"Vishwas","p":8341.0,"tp":0,"lat":19.399036541468686,"lon":75.4478049208358,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Porgaon","t":"Paithan","s":"Dinesh","p":1309.0,"tp":0,"lat":19.346772443426648,"lon":75.44600257013094,"y":[0,0,0,6.0],"tot":6.0},{"v":"Porgaon Tanda","t":"Paithan","s":"Dinesh","p":379.0,"tp":0,"lat":19.638842738786888,"lon":75.4779129900264,"y":[0,0,0,0],"tot":0.0},{"v":"Pusegaon","t":"Paithan","s":"Vishwas","p":415.0,"tp":0,"lat":19.536995528089857,"lon":75.53890878143712,"y":[0,0,0,0],"tot":0.0},{"v":"Rahatgaon","t":"Paithan","s":"Vishwas","p":3014.0,"tp":0,"lat":19.549962944171345,"lon":75.44229583511662,"y":[0,1.0,6.0,3.0],"tot":10.0},{"v":"Rajapur","t":"Paithan","s":"Vishwas","p":1188.0,"tp":0,"lat":19.419985716080777,"lon":75.31811663137444,"y":[0,0,2.0,3.0],"tot":5.0},{"v":"Ranjangaon Dandga","t":"Paithan","s":"Vishwas","p":1961.0,"tp":0,"lat":19.455163289419833,"lon":75.49186868921346,"y":[0,3.0,1.0,2.0],"tot":6.0},{"v":"Ranjangaon Khuri","t":"Paithan","s":"Dinesh","p":3199.0,"tp":0,"lat":19.491877560242965,"lon":75.28390389367947,"y":[0,0,0,2.0],"tot":2.0},{"v":"Ranjani","t":"Paithan","s":"Dinesh","p":338.0,"tp":0,"lat":19.567137367610375,"lon":75.56505122935732,"y":[0,0,0,0],"tot":0.0},{"v":"Saigaon","t":"Paithan","s":"Vishwas","p":393.0,"tp":0,"lat":19.427619273073663,"lon":75.355010631337,"y":[0,0,2.0,0],"tot":2.0},{"v":"Sajegaon","t":"Paithan","s":"Vishwas","p":32.0,"tp":0,"lat":19.43326211565225,"lon":75.23911967956985,"y":[0,0,0,0],"tot":0.0},{"v":"Salwadgaon","t":"Paithan","s":"Vishwas","p":928.0,"tp":0,"lat":19.392295921516258,"lon":75.3451648498841,"y":[0,1.0,1.0,2.0],"tot":4.0},{"v":"Shahapur Manegaon","t":"Paithan","s":"Dinesh","p":138.0,"tp":0,"lat":19.401225282644788,"lon":75.45639877744904,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Shahapur Wahegaon","t":"Paithan","s":"Vishwas","p":200.0,"tp":0,"lat":19.34443835926527,"lon":75.48207134244454,"y":[0,1.0,0,0],"tot":1.0},{"v":"Shekta","t":"Paithan","s":"Dinesh","p":2241.0,"tp":0,"lat":19.618238489398742,"lon":75.35079111533233,"y":[0,1.0,0,0],"tot":1.0},{"v":"Shevata","t":"Paithan","s":"Dinesh","p":684.0,"tp":0,"lat":19.49674219419052,"lon":75.51975924401108,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Shivani","t":"Paithan","s":"Dinesh","p":669.0,"tp":0,"lat":19.38653741245907,"lon":75.392988437041,"y":[0,0,0,0],"tot":0.0},{"v":"Shringarwadi","t":"Paithan","s":"Vishwas","p":638.0,"tp":0,"lat":19.41866306160307,"lon":75.3827649246903,"y":[0,0,1.0,0],"tot":1.0},{"v":"Solanapur","t":"Paithan","s":"Vishwas","p":2119.0,"tp":0,"lat":19.35348232694502,"lon":75.3728403245677,"y":[0,2.0,2.0,4.0],"tot":8.0},{"v":"Sompuri","t":"Paithan","s":"Dinesh","p":1763.0,"tp":0,"lat":19.283297766348962,"lon":75.3619527857913,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Sonwadi Bk.","t":"Paithan","s":"Vishwas","p":793.0,"tp":0,"lat":19.500622294382598,"lon":75.58147552489561,"y":[0,2.0,0,1.0],"tot":3.0},{"v":"Sonwadi Kh.","t":"Paithan","s":"Vishwas","p":1985.0,"tp":0,"lat":19.372353637331432,"lon":75.21826154652979,"y":[0,0,0,0],"tot":0.0},{"v":"Sultanpur","t":"Paithan","s":"Dinesh","p":753.0,"tp":0,"lat":19.50899688942863,"lon":75.19119287570724,"y":[0,0,0,7.0],"tot":7.0},{"v":"Taherpur","t":"Paithan","s":"Dinesh","p":377.0,"tp":0,"lat":19.414957105872464,"lon":75.25326505726517,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Takali Ambad","t":"Paithan","s":"Vishwas","p":3265.0,"tp":0,"lat":19.30808520402986,"lon":75.41938748697065,"y":[0,1.0,3.0,1.0],"tot":5.0},{"v":"Takli Paithan","t":"Paithan","s":"Dinesh","p":919.0,"tp":0,"lat":19.54864986846268,"lon":75.2694891693346,"y":[0,0,2.0,2.0],"tot":4.0},{"v":"Tanda Bk.","t":"Paithan","s":"Dinesh","p":645.0,"tp":0,"lat":19.39682566856743,"lon":75.37157062075133,"y":[0,0,2.0,0],"tot":2.0},{"v":"Tanda Kh.","t":"Paithan","s":"Dinesh","p":567.0,"tp":0,"lat":19.37101495915297,"lon":75.41118110431799,"y":[0,0,3.0,0],"tot":3.0},{"v":"Taru Pimpalwadi","t":"Paithan","s":"Dinesh","p":1053.0,"tp":0,"lat":19.575975483019118,"lon":75.37164394463971,"y":[0,1.0,1.0,0],"tot":2.0},{"v":"Tekadi Tanda","t":"Paithan","s":"Dinesh","p":705.0,"tp":0,"lat":19.39417289773833,"lon":75.35047559350726,"y":[0,0,0,1.0],"tot":1.0},{"v":"Telwadi","t":"Paithan","s":"Vishwas","p":1060.0,"tp":0,"lat":19.54242736903688,"lon":75.44178048165666,"y":[0,0,0,1.0],"tot":1.0},{"v":"Thapati Tanda","t":"Paithan","s":"Vishwas","p":543.0,"tp":0,"lat":19.61948112300744,"lon":75.25929007850695,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Thergaon","t":"Paithan","s":"Vishwas","p":2649.0,"tp":0,"lat":19.575392427563806,"lon":75.46552454880305,"y":[0,3.0,2.0,2.0],"tot":7.0},{"v":"Tondoli","t":"Paithan","s":"Dinesh","p":1975.0,"tp":0,"lat":19.62950671354469,"lon":75.39999041101565,"y":[0,5.0,5.0,3.0],"tot":13.0},{"v":"Tulapur","t":"Paithan","s":"Vishwas","p":401.0,"tp":0,"lat":19.59636122159172,"lon":75.39130130823727,"y":[0,0,2.0,1.0],"tot":3.0},{"v":"Tupewadi","t":"Paithan","s":"Dinesh","p":1308.0,"tp":0,"lat":19.602086267468945,"lon":75.34596251907163,"y":[0,0,5.0,2.0],"tot":7.0},{"v":"Vihamandwa","t":"Paithan","s":"Vishwas","p":9874.0,"tp":0,"lat":19.542292130604306,"lon":75.3620781502176,"y":[0,0,8.0,8.0],"tot":16.0},{"v":"Wadala","t":"Paithan","s":"Vishwas","p":622.0,"tp":0,"lat":19.608590964669872,"lon":75.33561723466036,"y":[0,5.0,1.0,1.0],"tot":7.0},{"v":"Wadgavhan","t":"Paithan","s":"Dinesh","p":406.0,"tp":0,"lat":19.65615304087015,"lon":75.44580867891925,"y":[0,0,0,0],"tot":0.0},{"v":"Wadji","t":"Paithan","s":"Vishwas","p":1527.0,"tp":0,"lat":19.35646634424224,"lon":75.4289678091818,"y":[0,4.0,2.0,2.0],"tot":8.0},{"v":"Wadwali","t":"Paithan","s":"Vishwas","p":2399.0,"tp":0,"lat":19.653057907295175,"lon":75.48111113826731,"y":[0,2.0,3.0,3.0],"tot":8.0},{"v":"Waghadi","t":"Paithan","s":"Vishwas","p":779.0,"tp":0,"lat":19.558303815143567,"lon":75.39926902947198,"y":[0,1.0,0,3.0],"tot":4.0},{"v":"Wahegaon","t":"Paithan","s":"Vishwas","p":4217.0,"tp":0,"lat":19.602034806521637,"lon":75.23969317630576,"y":[0,2.0,0,4.0],"tot":6.0},{"v":"Waki","t":"Paithan","s":"Vishwas","p":98.0,"tp":0,"lat":19.530023716650465,"lon":75.3964481276131,"y":[0,0,0,0],"tot":0.0},{"v":"Warudi Bk.","t":"Paithan","s":"Vishwas","p":1773.0,"tp":0,"lat":19.37277948209399,"lon":75.33917464537078,"y":[0,0,2.0,6.0],"tot":8.0},{"v":"Warwandi Kh.","t":"Paithan","s":"Vishwas","p":1179.0,"tp":0,"lat":19.59480092404146,"lon":75.52194345679361,"y":[0,0,3.0,1.0],"tot":4.0},{"v":"Wawa","t":"Paithan","s":"Vishwas","p":469.0,"tp":0,"lat":19.371582357951844,"lon":75.541297100322,"y":[0,0,1.0,1.0],"tot":2.0},{"v":"Yasinpur","t":"Paithan","s":"Dinesh","p":130.0,"tp":0,"lat":19.409845464000103,"lon":75.23253808751778,"y":[0,1.0,2.0,0],"tot":3.0}],"centers":{"Aurangabad":{"lat":19.8762,"lon":75.3433,"radius_km":18},"Gangapur":{"lat":19.6933,"lon":75.0083,"radius_km":16},"Kannad":{"lat":20.2481,"lon":75.1428,"radius_km":20},"Khuldabad":{"lat":20.0036,"lon":75.1944,"radius_km":12},"Paithan":{"lat":19.48,"lon":75.3833,"radius_km":22},"Phulambri":{"lat":20.0708,"lon":75.4125,"radius_km":15}},"talukas":["Aurangabad","Gangapur","Kannad","Khuldabad","Paithan","Phulambri"],"salesmen":["Anil Magre","Ankush","Balasaheb Toge","Bhartat","Dinesh","Dyaneshwar","Ganesh Mate","Janesh","Mahesh Jadhav","Nivrutti","Pravin Chavan","Purshottam","Raju","Sharad","Shivdash","Sujal","Sunil","Swapnil","Unassigned","Vishwas","Vitthal","Yogesh"],"years":["F23","F24","F25","F26"]};
+var SALESMAN_COLORS = [
+  '#0891b2','#dc2626','#16a34a','#ea580c','#9333ea','#0284c7',
+  '#d97706','#65a30d','#c026d3','#0d9488','#be185d','#4338ca',
+  '#b91c1c','#047857','#7c3aed','#a16207','#0369a1','#be123c',
+  '#15803d','#9f1239','#1e40af','#6b7280'
+];
+var smColor = {};
+for (var i = 0; i < PAYLOAD.salesmen.length; i++) {
+  smColor[PAYLOAD.salesmen[i]] = SALESMAN_COLORS[i % SALESMAN_COLORS.length];
+}
+var TALUKAS = PAYLOAD.talukas;
+var yearIdx = {F23:0, F24:1, F25:2, F26:3};
+
+// ============ Helpers ============
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function talukaStats(taluka) {
+  var v = taluka ? PAYLOAD.villages.filter(function(x){ return x.t === taluka; }) : PAYLOAD.villages;
+  var st = { villages:v.length, population:0, tractor_pop:0, F23:0, F24:0, F25:0, F26:0, total:0, zeroF26:0, delivered:0, salesmenSet:{} };
+  for (var i = 0; i < v.length; i++) {
+    var x = v[i];
+    st.population += x.p;
+    st.tractor_pop += x.tp;
+    st.F23 += x.y[0]; st.F24 += x.y[1]; st.F25 += x.y[2]; st.F26 += x.y[3];
+    st.total += x.tot;
+    if (x.y[3] === 0) st.zeroF26++;
+    if (x.tot > 0) st.delivered++;
+    st.salesmenSet[x.s] = true;
+  }
+  st.coverage = st.villages ? (st.delivered / st.villages * 100) : 0;
+  st.growth = st.F23 > 0 ? ((st.F26 - st.F23) / st.F23 * 100) : null;
+  st.penetration = st.tractor_pop > 0 ? (st.total / st.tractor_pop * 100) : 0;
+  st.per1000 = st.population > 0 ? (st.total / st.population * 1000) : 0;
+  st.avgPerVillage = st.villages > 0 ? (st.total / st.villages) : 0;
+  st.salesmen = Object.keys(st.salesmenSet).length;
+  delete st.salesmenSet;
+  return st;
+}
+
+// ============ KPIs ============
+function renderKpis() {
+  var k = talukaStats(null);
+  var pctGrowth = ((k.F26 - k.F25) / k.F25 * 100).toFixed(0);
+  var pen = (k.total / k.tractor_pop * 100).toFixed(1);
+  document.getElementById('kpi-strip').innerHTML =
+    '<div class="kpi"><div class="label">Total deliveries</div><div class="value">' + k.total.toLocaleString() + '</div><div class="change">F23-F26 combined</div></div>' +
+    '<div class="kpi"><div class="label">Villages covered</div><div class="value">' + k.villages + '</div><div class="change">6 talukas</div></div>' +
+    '<div class="kpi"><div class="label">F26 deliveries</div><div class="value">' + k.F26.toLocaleString() + '</div><div class="change">vs ' + k.F25.toLocaleString() + ' in F25 (+' + pctGrowth + '%)</div></div>' +
+    '<div class="kpi"><div class="label">Salesmen</div><div class="value">' + PAYLOAD.salesmen.length + '</div><div class="change">active</div></div>' +
+    '<div class="kpi"><div class="label">Zero-F26 villages</div><div class="value">' + k.zeroF26 + '</div><div class="change">expansion opportunity</div></div>' +
+    '<div class="kpi"><div class="label">Tractor penetration</div><div class="value">' + pen + '%</div><div class="change">of tractor population</div></div>';
+}
+
+// ============ Taluka ranking ============
+function renderTalukaRank() {
+  var rows = [];
+  for (var i = 0; i < TALUKAS.length; i++) {
+    var t = TALUKAS[i];
+    var s = talukaStats(t);
+    s.t = t;
+    rows.push(s);
+  }
+  rows.sort(function(a,b){ return b.total - a.total; });
+  var max = 1;
+  for (var j = 0; j < rows.length; j++) if (rows[j].total > max) max = rows[j].total;
+  var html = '<tr><th>Taluka</th><th>Vil</th><th>F23-F26</th><th>F26</th><th>Growth</th><th>Cov%</th></tr>';
+  for (var k = 0; k < rows.length; k++) {
+    var r = rows[k];
+    var growth = r.growth === null
+      ? '<span class="pill neutral">N/A</span>'
+      : '<span class="pill ' + (r.growth > 0 ? 'up' : 'down') + '">' + (r.growth > 0 ? '+' : '') + r.growth.toFixed(0) + '%</span>';
+    html += '<tr><td><b>' + esc(r.t) + '</b></td><td>' + r.villages + '</td>' +
+      '<td><span class="bar-cell" style="--pct:' + (r.total/max*100) + '%">' + r.total.toFixed(0) + '</span></td>' +
+      '<td>' + r.F26.toFixed(0) + '</td><td>' + growth + '</td><td>' + r.coverage.toFixed(0) + '%</td></tr>';
+  }
+  document.getElementById('tab-taluka-rank').innerHTML = html;
+}
+
+// ============ Taluka grid ============
+function renderTalukaGrid() {
+  var el = document.getElementById('taluka-grid');
+  el.innerHTML = '';
+  for (var i = 0; i < TALUKAS.length; i++) {
+    (function(t){
+      var s = talukaStats(t);
+      var max = Math.max(s.F23, s.F24, s.F25, s.F26, 1);
+      var yrs = [['F23', s.F23], ['F24', s.F24], ['F25', s.F25], ['F26', s.F26]];
+      var card = document.createElement('div');
+      card.className = 'taluka-card';
+      var bars = '';
+      for (var b = 0; b < yrs.length; b++) {
+        bars += '<div class="bar" style="height:' + (yrs[b][1]/max*100) + '%" data-label="' + yrs[b][0] + '"></div>';
+      }
+      card.innerHTML =
+        '<div class="name">' + t + '</div>' +
+        '<div class="stat-row"><span>Villages</span><span>' + s.villages + '</span></div>' +
+        '<div class="stat-row"><span>Salesmen</span><span>' + s.salesmen + '</span></div>' +
+        '<div class="stat-row"><span>Total F23-F26</span><span>' + s.total.toFixed(0) + '</span></div>' +
+        '<div class="stat-row"><span>F26</span><span>' + s.F26.toFixed(0) + '</span></div>' +
+        '<div class="stat-row"><span>Coverage</span><span>' + s.coverage.toFixed(0) + '%</span></div>' +
+        '<div class="bars">' + bars + '</div>';
+      card.onclick = function(){ selectView(t.toLowerCase()); };
+      el.appendChild(card);
+    })(TALUKAS[i]);
+  }
+}
+
+// ============ SVG Map rendering ============
+// State per map: current viewBox for zoom/pan
+var MAP_STATE = {};
+
+function computeBounds(villages) {
+  var minLat=Infinity, maxLat=-Infinity, minLon=Infinity, maxLon=-Infinity;
+  for (var i=0; i<villages.length; i++) {
+    var v = villages[i];
+    if (v.lat < minLat) minLat = v.lat;
+    if (v.lat > maxLat) maxLat = v.lat;
+    if (v.lon < minLon) minLon = v.lon;
+    if (v.lon > maxLon) maxLon = v.lon;
+  }
+  return { minLat:minLat, maxLat:maxLat, minLon:minLon, maxLon:maxLon };
+}
+
+function projectFn(bounds, w, h, pad) {
+  pad = pad || 40;
+  var dx = bounds.maxLon - bounds.minLon;
+  var dy = bounds.maxLat - bounds.minLat;
+  // maintain aspect ratio via scale
+  var sx = (w - 2*pad) / dx;
+  var sy = (h - 2*pad) / dy;
+  var s = Math.min(sx, sy);
+  // center
+  var cx = (w - s*dx) / 2;
+  var cy = (h - s*dy) / 2;
+  return function(lat, lon){
+    var x = cx + (lon - bounds.minLon) * s;
+    // invert Y because SVG y grows downward
+    var y = cy + (bounds.maxLat - lat) * s;
+    return [x, y];
+  };
+}
+
+function markerRadius(value, maxTot) {
+  if (!value) return 3.5;
+  return 5 + Math.sqrt(Math.max(0, value) / maxTot) * 18;
+}
+
+function renderOverviewMap() {
+  var svg = document.getElementById('map-overview');
+  var W = 1000, H = 700;
+  // Use all 6 talukas as bounds
+  var bounds = computeBounds(PAYLOAD.villages);
+  var proj = projectFn(bounds, W, H, 60);
+  MAP_STATE.overview = { svg:svg, proj:proj, W:W, H:H };
+
+  // Background grid (subtle)
+  var parts = [];
+  parts.push('<defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e0f2fe" stroke-width="0.5"/></pattern></defs>');
+  parts.push('<rect width="' + W + '" height="' + H + '" fill="url(#grid)"/>');
+
+  // Draw taluka boundary circles (approximate)
+  for (var tname in PAYLOAD.centers) {
+    var c = PAYLOAD.centers[tname];
+    var p = proj(c.lat, c.lon);
+    var rDegLat = c.radius_km / 111.0;
+    var p2 = proj(c.lat - rDegLat, c.lon);
+    var radPx = Math.abs(p2[1] - p[1]);
+    parts.push('<ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="' + radPx + '" ry="' + radPx + '" fill="#fff" fill-opacity="0.4" stroke="#1e3a8a" stroke-width="1" stroke-dasharray="4,3"/>');
+  }
+
+  // Draw villages
+  var maxTot = 1;
+  for (var i=0; i<PAYLOAD.villages.length; i++) if (PAYLOAD.villages[i].tot > maxTot) maxTot = PAYLOAD.villages[i].tot;
+  for (var i=0; i<PAYLOAD.villages.length; i++) {
+    var v = PAYLOAD.villages[i];
+    var xy = proj(v.lat, v.lon);
+    var r = markerRadius(v.tot, maxTot);
+    var col = smColor[v.s] || '#64748b';
+    var op = v.tot === 0 ? 0.3 : 0.85;
+    parts.push('<circle class="village-dot" cx="' + xy[0] + '" cy="' + xy[1] + '" r="' + r + '" fill="' + col + '" fill-opacity="' + op + '" stroke="' + (v.tot===0?'#94a3b8':'#fff') + '" stroke-width="' + (v.tot===0?0.5:1.5) + '" data-idx="' + i + '" data-map="overview"/>');
+  }
+
+  // Draw taluka labels on top
+  for (var tname in PAYLOAD.centers) {
+    var c = PAYLOAD.centers[tname];
+    var p = proj(c.lat, c.lon);
+    // Star marker
+    parts.push('<circle cx="' + p[0] + '" cy="' + p[1] + '" r="6" fill="#1e3a8a"/>');
+    // Label
+    var labelW = tname.length * 8 + 16;
+    parts.push('<rect x="' + (p[0] + 12) + '" y="' + (p[1] - 10) + '" width="' + labelW + '" height="20" rx="3" class="taluka-label-bg"/>');
+    parts.push('<text x="' + (p[0] + 20) + '" y="' + (p[1] + 4) + '" class="taluka-label-text">' + esc(tname) + '</text>');
+  }
+
+  svg.innerHTML = parts.join('');
+  attachMapHandlers(svg);
+
+  // Legend
+  var leg = document.getElementById('legend-overview');
+  var legendHtml = '';
+  for (var j=0; j<PAYLOAD.salesmen.length; j++) {
+    legendHtml += '<div class="legend-item"><div class="legend-dot" style="background:' + smColor[PAYLOAD.salesmen[j]] + '"></div>' + esc(PAYLOAD.salesmen[j]) + '</div>';
+  }
+  legendHtml += '<div class="legend-item"><div class="legend-dot" style="background:#cbd5e1;opacity:.5"></div>Zero delivery</div>';
+  leg.innerHTML = legendHtml;
+}
+
+function renderTalukaMap(container, taluka) {
+  var svg = container.querySelector('.taluka-map-svg');
+  var W = 1000, H = 700;
+
+  var smFilter = container.querySelector('.f-salesman').value;
+  var yrFilter = container.querySelector('.f-year').value;
+  var showFilter = container.querySelector('.f-show').value;
+
+  var villagesAll = PAYLOAD.villages.filter(function(v){ return v.t === taluka; });
+  var villages = villagesAll.slice();
+  if (smFilter) villages = villages.filter(function(v){ return v.s === smFilter; });
+  var getVal = function(v){ return yrFilter === 'tot' ? v.tot : v.y[yearIdx[yrFilter]]; };
+  if (showFilter === 'active') villages = villages.filter(function(v){ return getVal(v) > 0; });
+  else if (showFilter === 'zero') villages = villages.filter(function(v){ return v.y[3] === 0; });
+
+  var bounds = computeBounds(villagesAll.length ? villagesAll : [{lat:PAYLOAD.centers[taluka].lat, lon:PAYLOAD.centers[taluka].lon}]);
+  // Pad bounds a bit
+  var padLat = (bounds.maxLat - bounds.minLat) * 0.08;
+  var padLon = (bounds.maxLon - bounds.minLon) * 0.08;
+  bounds.minLat -= padLat; bounds.maxLat += padLat;
+  bounds.minLon -= padLon; bounds.maxLon += padLon;
+  var proj = projectFn(bounds, W, H, 50);
+  MAP_STATE[taluka] = { svg:svg, proj:proj, W:W, H:H };
+
+  var parts = [];
+  parts.push('<defs><pattern id="grid-' + taluka + '" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e0f2fe" stroke-width="0.5"/></pattern></defs>');
+  parts.push('<rect width="' + W + '" height="' + H + '" fill="url(#grid-' + taluka + ')"/>');
+
+  // Taluka circle
+  var c = PAYLOAD.centers[taluka];
+  var cp = proj(c.lat, c.lon);
+  var p2 = proj(c.lat - c.radius_km/111.0, c.lon);
+  var radPx = Math.abs(p2[1] - cp[1]);
+  parts.push('<ellipse cx="' + cp[0] + '" cy="' + cp[1] + '" rx="' + radPx + '" ry="' + radPx + '" fill="#fff" fill-opacity="0.5" stroke="#1e3a8a" stroke-width="1.5" stroke-dasharray="6,4"/>');
+
+  // Max for sizing
+  var maxTot = 1;
+  for (var i=0; i<villagesAll.length; i++) { var vv = getVal(villagesAll[i]); if (vv > maxTot) maxTot = vv; }
+
+  // Village dots
+  for (var i=0; i<villages.length; i++) {
+    var v = villages[i];
+    var xy = proj(v.lat, v.lon);
+    var val = getVal(v);
+    var r = markerRadius(val, maxTot);
+    var col = smColor[v.s] || '#64748b';
+    var op = val === 0 ? 0.3 : 0.85;
+    var origIdx = PAYLOAD.villages.indexOf(v);
+    parts.push('<circle class="village-dot" cx="' + xy[0] + '" cy="' + xy[1] + '" r="' + r + '" fill="' + col + '" fill-opacity="' + op + '" stroke="' + (val===0?'#94a3b8':'#fff') + '" stroke-width="' + (val===0?0.5:1.5) + '" data-idx="' + origIdx + '" data-map="' + taluka + '"/>');
+  }
+
+  // Labels for top 10 villages
+  var sortedTop = villages.slice().sort(function(a,b){ return getVal(b) - getVal(a); }).slice(0, 10);
+  for (var i=0; i<sortedTop.length; i++) {
+    var v = sortedTop[i];
+    if (getVal(v) === 0) continue;
+    var xy = proj(v.lat, v.lon);
+    var label = v.v + ' (' + getVal(v) + ')';
+    var lw = label.length * 5.5 + 8;
+    parts.push('<rect class="village-label-bg" x="' + (xy[0] + 8) + '" y="' + (xy[1] - 8) + '" width="' + lw + '" height="14" rx="2"/>');
+    parts.push('<text class="village-label" x="' + (xy[0] + 12) + '" y="' + (xy[1] + 2) + '">' + esc(label) + '</text>');
+  }
+
+  // Taluka center marker + label
+  parts.push('<circle cx="' + cp[0] + '" cy="' + cp[1] + '" r="9" fill="#1e3a8a" stroke="#fff" stroke-width="2"/>');
+  var lw2 = taluka.length * 9 + 16;
+  parts.push('<rect x="' + (cp[0] + 14) + '" y="' + (cp[1] - 12) + '" width="' + lw2 + '" height="22" rx="3" class="taluka-label-bg"/>');
+  parts.push('<text x="' + (cp[0] + 22) + '" y="' + (cp[1] + 3) + '" class="taluka-label-text" style="font-size:14px">' + esc(taluka) + '</text>');
+
+  svg.innerHTML = parts.join('');
+  attachMapHandlers(svg);
+}
+
+// Popup + zoom handlers
+var activePopup = null;
+function showPopup(wrap, svgCircle, village) {
+  hidePopup();
+  var rect = wrap.getBoundingClientRect();
+  var cx = parseFloat(svgCircle.getAttribute('cx'));
+  var cy = parseFloat(svgCircle.getAttribute('cy'));
+  // Get SVG CTM to convert to pixel coords
+  var pt = svgCircle.ownerSVGElement.createSVGPoint();
+  pt.x = cx; pt.y = cy;
+  var sctm = svgCircle.getScreenCTM();
+  var p = pt.matrixTransform(sctm);
+  var px = p.x - rect.left;
+  var py = p.y - rect.top;
+
+  var popup = document.createElement('div');
+  popup.className = 'popup';
+  popup.innerHTML =
+    '<h4>' + esc(village.v) + ' <span class="small">(' + esc(village.t) + ')</span></h4>' +
+    '<div class="kv"><span>Salesman</span><span>' + esc(village.s) + '</span></div>' +
+    '<div class="kv"><span>Population</span><span>' + village.p.toLocaleString() + '</span></div>' +
+    '<div class="kv"><span>Tractor pop</span><span>' + village.tp + '</span></div>' +
+    '<div class="kv"><span>F23</span><span>' + village.y[0] + '</span></div>' +
+    '<div class="kv"><span>F24</span><span>' + village.y[1] + '</span></div>' +
+    '<div class="kv"><span>F25</span><span>' + village.y[2] + '</span></div>' +
+    '<div class="kv"><span>F26</span><span>' + village.y[3] + '</span></div>' +
+    '<div class="kv"><b>Total</b><b>' + village.tot + '</b></div>';
+  popup.style.left = Math.min(rect.width - 240, Math.max(5, px + 15)) + 'px';
+  popup.style.top = Math.max(5, py - 100) + 'px';
+  wrap.appendChild(popup);
+  activePopup = popup;
+}
+function hidePopup() {
+  if (activePopup && activePopup.parentNode) activePopup.parentNode.removeChild(activePopup);
+  activePopup = null;
+}
+
+function attachMapHandlers(svg) {
+  var dots = svg.querySelectorAll('.village-dot');
+  var wrap = svg.parentElement;
+  for (var i=0; i<dots.length; i++) {
+    (function(dot){
+      dot.addEventListener('mouseenter', function(){
+        var idx = parseInt(dot.getAttribute('data-idx'), 10);
+        showPopup(wrap, dot, PAYLOAD.villages[idx]);
+      });
+      dot.addEventListener('mouseleave', function(){ hidePopup(); });
+      dot.addEventListener('click', function(e){
+        e.stopPropagation();
+        var idx = parseInt(dot.getAttribute('data-idx'), 10);
+        showPopup(wrap, dot, PAYLOAD.villages[idx]);
+      });
+    })(dots[i]);
+  }
+
+  // Pan support
+  var W = MAP_STATE[svg.id === 'map-overview' ? 'overview' : findTalukaForSvg(svg)].W;
+  var H = MAP_STATE[svg.id === 'map-overview' ? 'overview' : findTalukaForSvg(svg)].H;
+  var panning = false;
+  var startX = 0, startY = 0;
+  var vb = svg.viewBox.baseVal;
+  svg.addEventListener('mousedown', function(e){
+    if (e.target.classList.contains('village-dot')) return;
+    panning = true;
+    startX = e.clientX; startY = e.clientY;
+    svg.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', function(e){
+    if (!panning) return;
+    var scale = vb.width / svg.clientWidth;
+    vb.x -= (e.clientX - startX) * scale;
+    vb.y -= (e.clientY - startY) * scale;
+    startX = e.clientX; startY = e.clientY;
+  });
+  window.addEventListener('mouseup', function(){
+    panning = false;
+    svg.style.cursor = 'grab';
+  });
+  svg.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var factor = e.deltaY < 0 ? 1/1.2 : 1.2;
+    zoomViewBox(vb, factor);
+  }, { passive:false });
+}
+
+function findTalukaForSvg(svg) {
+  for (var k in MAP_STATE) if (MAP_STATE[k].svg === svg) return k;
+  return null;
+}
+
+function zoomViewBox(vb, factor) {
+  var cx = vb.x + vb.width/2;
+  var cy = vb.y + vb.height/2;
+  vb.width *= factor;
+  vb.height *= factor;
+  vb.x = cx - vb.width/2;
+  vb.y = cy - vb.height/2;
+}
+
+function zoomMap(key, factor) {
+  var st = MAP_STATE[key];
+  if (!st) return;
+  zoomViewBox(st.svg.viewBox.baseVal, 1/factor);
+}
+function resetMap(key) {
+  var st = MAP_STATE[key];
+  if (!st) return;
+  var vb = st.svg.viewBox.baseVal;
+  vb.x = 0; vb.y = 0; vb.width = st.W; vb.height = st.H;
+}
+
+// ============ Per-taluka view ============
+function buildTalukaView(taluka) {
+  var viewId = 'v-' + taluka.toLowerCase();
+  var view = document.getElementById(viewId);
+  if (!view) {
+    view = document.createElement('div');
+    view.className = 'view';
+    view.id = viewId;
+    var tpl = document.getElementById('tpl-taluka-view').content.cloneNode(true);
+    tpl.querySelector('.taluka-title').textContent = taluka + ' Taluka - Detailed Map';
+    view.appendChild(tpl);
+    document.querySelector('main').appendChild(view);
+  }
+  var container = view;
+
+  // Filters
+  var sel = container.querySelector('.f-salesman');
+  var talukaVillages = PAYLOAD.villages.filter(function(v){ return v.t === taluka; });
+  var sm = {};
+  for (var i=0; i<talukaVillages.length; i++) sm[talukaVillages[i].s] = true;
+  var talukaSalesmen = Object.keys(sm).sort();
+  var smOpts = '<option value="">All</option>';
+  for (var i=0; i<talukaSalesmen.length; i++) smOpts += '<option>' + esc(talukaSalesmen[i]) + '</option>';
+  sel.innerHTML = smOpts;
+
+  // Legend
+  var leg = container.querySelector('.sm-legend');
+  var legHtml = '';
+  for (var i=0; i<talukaSalesmen.length; i++) {
+    legHtml += '<div class="legend-item"><div class="legend-dot" style="background:' + smColor[talukaSalesmen[i]] + '"></div>' + esc(talukaSalesmen[i]) + '</div>';
+  }
+  legHtml += '<div class="legend-item"><div class="legend-dot" style="background:#cbd5e1;opacity:.5"></div>Zero delivery</div>';
+  leg.innerHTML = legHtml;
+
+  // KPIs
+  var s = talukaStats(taluka);
+  container.querySelector('.k-metrics').innerHTML =
+    '<div class="metric-card"><div class="num">' + s.villages + '</div><div class="lbl">Villages</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.salesmen + '</div><div class="lbl">Salesmen</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.total.toFixed(0) + '</div><div class="lbl">Total (F23-F26)</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.F26.toFixed(0) + '</div><div class="lbl">F26</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.coverage.toFixed(0) + '%</div><div class="lbl">Coverage</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.penetration.toFixed(1) + '%</div><div class="lbl">Penetration</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.per1000.toFixed(2) + '</div><div class="lbl">Per 1000 Pop</div></div>' +
+    '<div class="metric-card"><div class="num">' + s.zeroF26 + '</div><div class="lbl">Zero F26</div></div>';
+
+  // Salesman table
+  var smData = {};
+  for (var i=0; i<talukaVillages.length; i++) {
+    var v = talukaVillages[i];
+    if (!smData[v.s]) smData[v.s] = {villages:0,delivered:0,F23:0,F24:0,F25:0,F26:0,total:0};
+    var d = smData[v.s];
+    d.villages++;
+    if (v.tot > 0) d.delivered++;
+    d.F23 += v.y[0]; d.F24 += v.y[1]; d.F25 += v.y[2]; d.F26 += v.y[3]; d.total += v.tot;
+  }
+  var smArr = [];
+  for (var name in smData) smArr.push([name, smData[name]]);
+  smArr.sort(function(a,b){ return b[1].total - a[1].total; });
+  var sht = '<tr><th>Salesman</th><th>Vil</th><th>Deliv</th><th>F23-F26</th><th>F26</th><th>Cov%</th></tr>';
+  for (var i=0; i<smArr.length; i++) {
+    var name = smArr[i][0], d = smArr[i][1];
+    sht += '<tr><td><span class="legend-dot" style="display:inline-block;background:' + smColor[name] + ';margin-right:4px;vertical-align:middle"></span>' + esc(name) + '</td>' +
+      '<td>' + d.villages + '</td><td>' + d.delivered + '</td><td>' + d.total.toFixed(0) + '</td>' +
+      '<td>' + d.F26.toFixed(0) + '</td><td>' + (d.delivered/d.villages*100).toFixed(0) + '%</td></tr>';
+  }
+  container.querySelector('.t-salesman').innerHTML = sht;
+
+  // Top 5
+  var top5 = talukaVillages.slice().sort(function(a,b){ return b.tot - a.tot; }).slice(0, 5);
+  var t5 = '<tr><th>Village</th><th>Salesman</th><th>F23</th><th>F24</th><th>F25</th><th>F26</th><th>Total</th></tr>';
+  for (var i=0; i<top5.length; i++) {
+    var v = top5[i];
+    t5 += '<tr><td><b>' + esc(v.v) + '</b></td><td>' + esc(v.s) + '</td>' +
+      '<td>' + v.y[0] + '</td><td>' + v.y[1] + '</td><td>' + v.y[2] + '</td><td>' + v.y[3] + '</td><td><b>' + v.tot + '</b></td></tr>';
+  }
+  container.querySelector('.t-top5').innerHTML = t5;
+
+  // Filter handlers - redraw map
+  var redraw = function(){ renderTalukaMap(container, taluka); };
+  container.querySelector('.f-salesman').onchange = redraw;
+  container.querySelector('.f-year').onchange = redraw;
+  container.querySelector('.f-show').onchange = redraw;
+
+  // Zoom buttons
+  container.querySelector('.zoom-in').onclick = function(){ zoomMap(taluka, 1.4); };
+  container.querySelector('.zoom-out').onclick = function(){ zoomMap(taluka, 1/1.4); };
+  container.querySelector('.zoom-reset').onclick = function(){ resetMap(taluka); };
+}
+
+// ============ Salesmen ranking ============
+function renderSalesmen() {
+  var smAgg = {};
+  for (var i=0; i<PAYLOAD.villages.length; i++) {
+    var v = PAYLOAD.villages[i];
+    if (!smAgg[v.s]) smAgg[v.s] = {villages:0,delivered:0,pop:0,tp:0,F23:0,F24:0,F25:0,F26:0,total:0,talukas:{}};
+    var d = smAgg[v.s];
+    d.villages++; d.pop += v.p; d.tp += v.tp;
+    d.F23 += v.y[0]; d.F24 += v.y[1]; d.F25 += v.y[2]; d.F26 += v.y[3]; d.total += v.tot;
+    if (v.tot > 0) d.delivered++;
+    d.talukas[v.t] = true;
+  }
+  var rows = [];
+  for (var name in smAgg) {
+    var d = smAgg[name];
+    rows.push({
+      name:name, villages:d.villages, delivered:d.delivered, pop:d.pop, tp:d.tp,
+      F23:d.F23, F24:d.F24, F25:d.F25, F26:d.F26, total:d.total,
+      talukas: Object.keys(d.talukas).join(', '),
+      coverage: d.delivered / d.villages * 100,
+      growth: d.F23 > 0 ? (d.F26 - d.F23) / d.F23 * 100 : null,
+      penetration: d.tp > 0 ? d.total / d.tp * 100 : 0,
+      avg: d.total / d.villages
+    });
+  }
+  rows.sort(function(a,b){ return b.total - a.total; });
+  var max = 1;
+  for (var j=0; j<rows.length; j++) if (rows[j].total > max) max = rows[j].total;
+  var html = '<tr><th>#</th><th>Salesman</th><th>Taluka(s)</th><th>Villages</th><th>Deliv</th><th>Cov%</th><th>F23</th><th>F24</th><th>F25</th><th>F26</th><th>Total</th><th>YoY</th><th>Avg/Vil</th><th>Pen%</th></tr>';
+  for (var i=0; i<rows.length; i++) {
+    var r = rows[i];
+    var growth = r.growth === null
+      ? '<span class="pill neutral">N/A</span>'
+      : '<span class="pill ' + (r.growth > 0 ? 'up' : 'down') + '">' + (r.growth > 0 ? '+' : '') + r.growth.toFixed(0) + '%</span>';
+    html += '<tr><td>' + (i+1) + '</td>' +
+      '<td><span class="legend-dot" style="display:inline-block;background:' + smColor[r.name] + ';margin-right:4px;vertical-align:middle"></span><b>' + esc(r.name) + '</b></td>' +
+      '<td>' + esc(r.talukas) + '</td><td>' + r.villages + '</td><td>' + r.delivered + '</td>' +
+      '<td>' + r.coverage.toFixed(0) + '%</td>' +
+      '<td>' + r.F23.toFixed(0) + '</td><td>' + r.F24.toFixed(0) + '</td><td>' + r.F25.toFixed(0) + '</td><td>' + r.F26.toFixed(0) + '</td>' +
+      '<td><span class="bar-cell" style="--pct:' + (r.total/max*100) + '%">' + r.total.toFixed(0) + '</span></td>' +
+      '<td>' + growth + '</td><td>' + r.avg.toFixed(2) + '</td><td>' + r.penetration.toFixed(1) + '%</td></tr>';
+  }
+  document.getElementById('tab-salesmen').innerHTML = html;
+}
+
+// ============ Analysis view ============
+function renderAnalysis() {
+  renderYoYChart();
+
+  var top10 = PAYLOAD.villages.slice().sort(function(a,b){ return b.tot - a.tot; }).slice(0, 10);
+  var html = '<tr><th>#</th><th>Village</th><th>Taluka</th><th>Salesman</th><th>F23-F26</th></tr>';
+  var max10 = top10[0].tot;
+  for (var i=0; i<top10.length; i++) {
+    var v = top10[i];
+    html += '<tr><td>' + (i+1) + '</td><td><b>' + esc(v.v) + '</b></td><td>' + esc(v.t) + '</td><td>' + esc(v.s) + '</td>' +
+      '<td><span class="bar-cell" style="--pct:' + (v.tot/max10*100) + '%">' + v.tot + '</span></td></tr>';
+  }
+  document.getElementById('tab-top10').innerHTML = html;
+
+  var penRows = [];
+  for (var i=0; i<TALUKAS.length; i++) penRows.push(Object.assign({t:TALUKAS[i]}, talukaStats(TALUKAS[i])));
+  penRows.sort(function(a,b){ return b.penetration - a.penetration; });
+  var pht = '<tr><th>Taluka</th><th>Deliv</th><th>Tractor Pop</th><th>Penetration</th></tr>';
+  for (var i=0; i<penRows.length; i++) {
+    var r = penRows[i];
+    pht += '<tr><td>' + esc(r.t) + '</td><td>' + r.total.toFixed(0) + '</td><td>' + r.tractor_pop.toFixed(0) + '</td><td><b>' + r.penetration.toFixed(2) + '%</b></td></tr>';
+  }
+  document.getElementById('tab-penetration').innerHTML = pht;
+
+  var p1kRows = [];
+  for (var i=0; i<TALUKAS.length; i++) p1kRows.push(Object.assign({t:TALUKAS[i]}, talukaStats(TALUKAS[i])));
+  p1kRows.sort(function(a,b){ return b.per1000 - a.per1000; });
+  var p1t = '<tr><th>Taluka</th><th>Deliv</th><th>Population</th><th>Per 1000</th></tr>';
+  for (var i=0; i<p1kRows.length; i++) {
+    var r = p1kRows[i];
+    p1t += '<tr><td>' + esc(r.t) + '</td><td>' + r.total.toFixed(0) + '</td><td>' + r.population.toFixed(0) + '</td><td><b>' + r.per1000.toFixed(3) + '</b></td></tr>';
+  }
+  document.getElementById('tab-per1000').innerHTML = p1t;
+
+  var zeros = PAYLOAD.villages.filter(function(v){ return v.y[3] === 0; }).sort(function(a,b){ return b.p - a.p; });
+  var zht = '<tr><th>Village</th><th>Taluka</th><th>Salesman</th><th>Pop</th><th>Tractor Pop</th></tr>';
+  for (var i=0; i<Math.min(50, zeros.length); i++) {
+    var v = zeros[i];
+    zht += '<tr><td>' + esc(v.v) + '</td><td>' + esc(v.t) + '</td><td>' + esc(v.s) + '</td><td>' + v.p.toLocaleString() + '</td><td>' + v.tp + '</td></tr>';
+  }
+  zht += '<tr><td colspan="5" style="color:#64748b;font-style:italic">Top 50 of ' + zeros.length + ' by population.</td></tr>';
+  document.getElementById('tab-zerof26').innerHTML = zht;
+}
+
+function renderYoYChart() {
+  var svg = document.getElementById('chart-yoy');
+  var W = 800, H = 320;
+  var pad = { l:50, r:20, t:20, b:40 };
+  var plotW = W - pad.l - pad.r;
+  var plotH = H - pad.t - pad.b;
+
+  var years = ['F23','F24','F25','F26'];
+  var colors = ['#0891b2','#dc2626','#16a34a','#ea580c','#9333ea','#d97706'];
+
+  var seriesData = [];
+  var maxY = 0;
+  for (var i=0; i<TALUKAS.length; i++) {
+    var st = talukaStats(TALUKAS[i]);
+    var series = [st.F23, st.F24, st.F25, st.F26];
+    seriesData.push({name:TALUKAS[i], data:series, color:colors[i % colors.length]});
+    for (var k=0; k<series.length; k++) if (series[k] > maxY) maxY = series[k];
+  }
+  maxY = Math.ceil(maxY / 50) * 50;
+
+  var parts = [];
+  // Y axis grid & labels
+  for (var i=0; i<=5; i++) {
+    var v = maxY * i / 5;
+    var y = pad.t + plotH - (v/maxY * plotH);
+    parts.push('<line class="svg-chart-grid" x1="' + pad.l + '" y1="' + y + '" x2="' + (W-pad.r) + '" y2="' + y + '"/>');
+    parts.push('<text class="svg-chart-label" x="' + (pad.l-8) + '" y="' + (y+3) + '" text-anchor="end">' + v.toFixed(0) + '</text>');
+  }
+  // X axis labels
+  for (var i=0; i<years.length; i++) {
+    var x = pad.l + plotW * i/(years.length-1);
+    parts.push('<text class="svg-chart-label" x="' + x + '" y="' + (H-10) + '" text-anchor="middle">' + years[i] + '</text>');
+  }
+  parts.push('<line class="svg-chart-axis" x1="' + pad.l + '" y1="' + (pad.t+plotH) + '" x2="' + (W-pad.r) + '" y2="' + (pad.t+plotH) + '"/>');
+  parts.push('<line class="svg-chart-axis" x1="' + pad.l + '" y1="' + pad.t + '" x2="' + pad.l + '" y2="' + (pad.t+plotH) + '"/>');
+
+  // Lines
+  for (var s=0; s<seriesData.length; s++) {
+    var sd = seriesData[s];
+    var d = '';
+    for (var i=0; i<sd.data.length; i++) {
+      var x = pad.l + plotW * i/(sd.data.length-1);
+      var y = pad.t + plotH - (sd.data[i]/maxY * plotH);
+      d += (i===0 ? 'M ' : ' L ') + x + ' ' + y;
+    }
+    parts.push('<path class="svg-line" stroke="' + sd.color + '" d="' + d + '"/>');
+    // Points
+    for (var i=0; i<sd.data.length; i++) {
+      var x = pad.l + plotW * i/(sd.data.length-1);
+      var y = pad.t + plotH - (sd.data[i]/maxY * plotH);
+      parts.push('<circle class="svg-line-pt" cx="' + x + '" cy="' + y + '" r="4" fill="' + sd.color + '"/>');
+    }
+  }
+
+  svg.innerHTML = parts.join('');
+
+  // Legend
+  var legHtml = '';
+  for (var s=0; s<seriesData.length; s++) {
+    legHtml += '<div class="legend-item"><div class="legend-dot" style="background:' + seriesData[s].color + '"></div>' + esc(seriesData[s].name) + '</div>';
+  }
+  document.getElementById('yoy-legend').innerHTML = legHtml;
+}
+
+// ============ Tabs ============
+function selectView(name) {
+  var views = document.querySelectorAll('.view');
+  for (var i=0; i<views.length; i++) views[i].classList.remove('active');
+  var buttons = document.querySelectorAll('nav.tabs button');
+  for (var i=0; i<buttons.length; i++) buttons[i].classList.remove('active');
+  var viewEl = document.getElementById('v-' + name);
+  if (viewEl) viewEl.classList.add('active');
+  var btn = document.querySelector('nav.tabs button[data-view="' + name + '"]');
+  if (btn) btn.classList.add('active');
+
+  if (name === 'overview') renderOverviewMap();
+  var lowerTalukas = TALUKAS.map(function(t){ return t.toLowerCase(); });
+  if (lowerTalukas.indexOf(name) >= 0) {
+    var taluka = TALUKAS[lowerTalukas.indexOf(name)];
+    renderTalukaMap(document.getElementById('v-' + name), taluka);
+  }
+  if (name === 'analysis') renderAnalysis();
+  if (name === 'salesmen') renderSalesmen();
+}
+
+var navBtns = document.querySelectorAll('nav.tabs button');
+for (var i=0; i<navBtns.length; i++) {
+  (function(b){ b.onclick = function(){ selectView(b.getAttribute('data-view')); }; })(navBtns[i]);
+}
+
+// Initial render
+renderKpis();
+renderTalukaRank();
+renderTalukaGrid();
+for (var i=0; i<TALUKAS.length; i++) buildTalukaView(TALUKAS[i]);
+setTimeout(renderOverviewMap, 50);
+
+// Global: click outside map hides popup
+document.addEventListener('click', function(e){
+  if (!e.target.classList.contains('village-dot')) hidePopup();
+});
+</script>
+</body>
+</html>
