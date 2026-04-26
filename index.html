@@ -90,9 +90,95 @@
   .svg-line { stroke-width:2.5; fill:none; }
   .svg-line-pt { stroke-width:2; stroke:#fff; }
   .notice { background:#fef3c7; color:#92400e; padding:10px 14px; border-radius:6px; font-size:12px; margin-bottom:12px; border-left:3px solid #f59e0b; }
+  /* PIN Auth */
+  #pin-overlay { position:fixed; inset:0; background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 50%,#0891b2 100%); display:flex; align-items:center; justify-content:center; z-index:9999; }
+  #pin-box { background:#fff; border-radius:16px; padding:36px 32px; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; width:320px; max-width:90vw; }
+  #pin-box h2 { margin:0 0 4px; font-size:20px; font-weight:700; color:#0f172a; }
+  #pin-box p { margin:0 0 24px; font-size:13px; color:#64748b; }
+  #pin-dots { display:flex; justify-content:center; gap:12px; margin-bottom:24px; }
+  .pin-dot { width:14px; height:14px; border-radius:50%; background:#e2e8f0; border:2px solid #cbd5e1; transition:all .15s; }
+  .pin-dot.filled { background:#0891b2; border-color:#0891b2; }
+  #pin-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .pin-key { padding:16px; font-size:18px; font-weight:600; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; cursor:pointer; color:#0f172a; transition:all .1s; user-select:none; }
+  .pin-key:hover { background:#e0f2fe; border-color:#0891b2; color:#0891b2; }
+  .pin-key:active { transform:scale(0.94); }
+  #pin-error { color:#dc2626; font-size:12px; margin-top:12px; min-height:18px; }
+  #pin-overlay.hidden { display:none; }
+  body.locked { overflow:hidden; }
 </style>
 </head>
-<body>
+<body class="locked">
+
+<!-- PIN Authentication Overlay -->
+<div id="pin-overlay">
+  <div id="pin-box">
+    <h2>Chhatrapati Sambhajinagar</h2>
+    <p>Enter PIN to access the dashboard</p>
+    <div id="pin-dots">
+      <div class="pin-dot" id="dot-0"></div>
+      <div class="pin-dot" id="dot-1"></div>
+      <div class="pin-dot" id="dot-2"></div>
+      <div class="pin-dot" id="dot-3"></div>
+      <div class="pin-dot" id="dot-4"></div>
+    </div>
+    <div id="pin-keypad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key" onclick="pinClear()" style="font-size:13px;color:#64748b;">Clear</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key" onclick="pinBack()" style="font-size:18px;">&#8592;</button>
+    </div>
+    <div id="pin-error"></div>
+  </div>
+</div>
+<script>
+  const PIN_CORRECT = '25786';
+  let pinEntry = '';
+  function pinKey(d) {
+    if (pinEntry.length >= 5) return;
+    pinEntry += d;
+    updateDots();
+    if (pinEntry.length === 5) setTimeout(checkPin, 120);
+  }
+  function pinBack() {
+    pinEntry = pinEntry.slice(0, -1);
+    updateDots();
+    document.getElementById('pin-error').textContent = '';
+  }
+  function pinClear() {
+    pinEntry = '';
+    updateDots();
+    document.getElementById('pin-error').textContent = '';
+  }
+  function updateDots() {
+    for (let i = 0; i < 5; i++) {
+      document.getElementById('dot-' + i).classList.toggle('filled', i < pinEntry.length);
+    }
+  }
+  function checkPin() {
+    if (pinEntry === PIN_CORRECT) {
+      document.getElementById('pin-overlay').classList.add('hidden');
+      document.body.classList.remove('locked');
+    } else {
+      document.getElementById('pin-error').textContent = 'Incorrect PIN. Please try again.';
+      pinEntry = '';
+      updateDots();
+    }
+  }
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('pin-overlay').classList.contains('hidden')) return;
+    if (e.key >= '0' && e.key <= '9') pinKey(e.key);
+    else if (e.key === 'Backspace') pinBack();
+    else if (e.key === 'Escape') pinClear();
+  });
+</script>
 <header>
   <h1>Chhatrapati Sambhajinagar - Taluka Delivery Analysis</h1>
   <div class="subtitle">Village-level delivery intelligence &middot; F23 - F26 &middot; 6 Talukas &middot; 22 Salesmen &middot; 950 Villages</div>
